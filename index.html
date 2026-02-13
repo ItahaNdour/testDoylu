@@ -1,156 +1,49 @@
-Parfait.
-
-Tu choisis B : toutes les offres disponibles sous le budget.
-
-👉 Très bon choix pour le Sénégal.
-Pourquoi ? Parce que les gens aiment voir les options.
-Ils veulent comparer eux-mêmes.
-Ils ne veulent pas qu’on décide à leur place.
-
-Maintenant on structure ça proprement.
-
-🎯 ORIENTATION PRODUIT V1 VALIDÉE
-
-Quand utilisateur met 1000 FCFA :
-
-Il doit voir :
-
-Toutes les offres ≤ 1000 FCFA
-
-Triées intelligemment (meilleure valeur en premier)
-
-Mais visibles toutes
-
-Parfait.
-
-🔥 MAINTENANT : CE QUE TON DEV DOIT REVOIR CLAIREMENT
-
-Je vais te faire une checklist prête à envoyer.
-
-✅ 1️⃣ REMETTRE LE CHAMP LIBRE BUDGET (OBLIGATOIRE)
-À ajouter en haut :
-[ 💰 J’ai ______ FCFA ]
-
-
-Champ numérique uniquement
-
-Bouton “Voir les offres”
-
-Auto-submit si possible
-
-En dessous :
-
-Boutons rapides :
-500 | 1000 | 2000 | 3000 | 5000
-
-👉 Le champ libre doit être prioritaire visuellement.
-
-✅ 2️⃣ RÉDUIRE LES ESPACES (TRÈS IMPORTANT)
-Dev doit :
-
-Réduire padding vertical global de 30%
-
-Réduire margin entre sections
-
-Réduire hauteur des cartes
-
-Réduire espace sous le hero
-
-Objectif :
-
-Moins de scroll.
-Plus dense.
-Plus “outil”.
-
-✅ 3️⃣ RÉDUIRE TAILLE DES TEXTES EN MOBILE
-
-Actuellement trop gros.
-
-Dev doit :
-
-Diminuer font-size des titres de 15%
-
-Diminuer taille du prix légèrement
-
-Garder lisible mais plus compact
-
-✅ 4️⃣ CARTES OFFRES PLUS COMPACTES
-Modifier :
-
-Prix gros mais moins énorme
-
-Data + validité sur UNE seule ligne
-
-Boutons moins hauts
-
-Moins d’espace interne
-
-Chaque carte doit prendre 20–25% de hauteur en moins.
-
-✅ 5️⃣ SUPPRIMER LES ÉLÉMENTS FAIBLES
-
-À retirer :
-
-“0 recherches ce mois-ci”
-
-Blocs vides gris
-
-Sections qui disent “Pas encore de données”
-
-Si vide → masquer section.
-
-✅ 6️⃣ RENDRE LES RÉSULTATS PLUS DENSES
-
-Quand budget sélectionné :
-
-Afficher :
-
-Tri par meilleure valeur par défaut
-
-Toutes les offres sous le budget
-
-Compactes
-
-Scroll rapide
-
-Pas trop d’air.
-
-✅ 7️⃣ MOBILE = PRIORITÉ ABSOLUE
-
-Dev doit tester :
-
-Sur petit écran Android
-
-Scroll fluide
-
-Boutons pas énormes
-
-Pas trop d’espace blanc
-
-🎯 OBJECTIF UX V1
-
-Quand quelqu’un ouvre Doylu :
-
-Il tape son budget
-
-Il voit 3–5 offres
-
-Il compare vite
-
-Il clique
-
-Il achète
-
-Temps total : < 20 secondes
-
-🧠 Maintenant je vais te dire un truc important
-
-Ton site est bon.
-
-Mais pour devenir incontournable :
-
-Il doit ressembler moins à une “landing page”
-et plus à une “machine à comparer”.
-
-Moins design.
-Plus efficacité.
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Doylu</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <div class="logo">🐘 Doylu</div>
+  <div class="admin-link" onclick="openAdmin()">Admin</div>
+</header>
+
+<section class="hero">
+  <h1>Avant d’acheter ton pass, vérifie ici.</h1>
+  <p>La meilleure offre pour ton budget en quelques secondes.</p>
+
+  <div class="budget-box">
+    <input type="number" id="budgetInput" placeholder="💰 J’ai combien de FCFA ?">
+    <button onclick="searchOffers()">Voir les offres</button>
+  </div>
+
+  <div class="quick-buttons">
+    <button onclick="quickBudget(500)">500</button>
+    <button onclick="quickBudget(1000)">1000</button>
+    <button onclick="quickBudget(2000)">2000</button>
+    <button onclick="quickBudget(3000)">3000</button>
+    <button onclick="quickBudget(5000)">5000</button>
+  </div>
+</section>
+
+<section id="results"></section>
+
+<section class="habit">
+  Beaucoup prennent le même forfait par habitude.<br>
+  <strong>Vérifie toujours avant d’acheter.</strong>
+</section>
+
+<div id="adminPanel" class="admin-panel">
+  <h2>Admin</h2>
+  <div id="adminList"></div>
+  <button onclick="closeAdmin()">Fermer</button>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
