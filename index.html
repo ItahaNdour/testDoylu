@@ -1,216 +1,156 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Doylu — V1</title>
-  <link rel="stylesheet" href="./style.css" />
-</head>
-<body>
-  <header>
-    <div class="header-inner">
-      <div class="brand" id="brandBtn" role="button" tabindex="0" aria-label="Aller à l'accueil">
-        <div class="mark">D</div><div>Doylu</div>
-      </div>
+Parfait.
 
-      <nav class="desktop" aria-label="Menu">
-        <a href="#home" id="nav_home">Accueil</a>
-        <a href="#promos" id="nav_promos">Promos</a>
-        <a href="#guide" id="nav_guide">Guide USSD</a>
-        <a href="#contact" id="nav_contact">Contact</a>
-      </nav>
+Tu choisis B : toutes les offres disponibles sous le budget.
 
-      <button class="hamburger" id="hamburgerBtn" aria-label="Ouvrir le menu">☰</button>
-    </div>
+👉 Très bon choix pour le Sénégal.
+Pourquoi ? Parce que les gens aiment voir les options.
+Ils veulent comparer eux-mêmes.
+Ils ne veulent pas qu’on décide à leur place.
 
-    <div class="mobile-menu hidden" id="mobileMenu">
-      <a href="#home" id="mnav_home">Accueil</a>
-      <a href="#promos" id="mnav_promos">Promos</a>
-      <a href="#guide" id="mnav_guide">Guide USSD</a>
-      <a href="#contact" id="mnav_contact">Contact</a>
-    </div>
-  </header>
+Maintenant on structure ça proprement.
 
-  <main id="page_home">
-    <div class="container">
-      <section class="hero">
-        <h1>Avant d’acheter ton pass, vérifie ici.</h1>
-        <p>Meilleure offre par budget en 5 secondes. <span class="muted-inline">Pas de piège. Pas de surprise.</span></p>
-      </section>
+🎯 ORIENTATION PRODUIT V1 VALIDÉE
 
-      <div class="box">
-        <div class="budget-title">💰 Choisis ton budget</div>
-        <div class="budget-grid" id="budgetGrid"></div>
+Quand utilisateur met 1000 FCFA :
 
-        <div class="subhint">
-          <div class="trust-line">
-            <span class="trust-pill">🔒 Vérifiées par SMS/USSD</span>
-            <span class="trust-pill">✔ MAJ quotidienne</span>
-            <span class="trust-pill">⚖️ Indépendant</span>
-            <span class="trust-pill">Dernière MAJ: <strong id="lastUpdate"></strong></span>
-            <span class="trust-pill">📈 <strong id="socialProof"></strong></span>
-          </div>
-          <a class="link" href="#" id="howVerifyLink">Comment on vérifie ?</a>
-        </div>
-      </div>
+Il doit voir :
 
-      <div class="section" id="popularSection">
-        <div class="section-title">🔥 Les plus choisis ce mois-ci</div>
-        <div class="section-card">
-          <div id="popularList" class="section-sub">Chargement…</div>
-        </div>
-      </div>
+Toutes les offres ≤ 1000 FCFA
 
-      <div class="controls">
-        <div class="control-left">
-          <span class="chip small">⏱ Validité</span>
-          <button class="chip active" type="button" data-valid="any">Illimité</button>
-          <button class="chip" type="button" data-valid="1">24h</button>
-          <button class="chip" type="button" data-valid="7">7 jours</button>
-          <button class="chip" type="button" data-valid="30">30 jours</button>
-        </div>
-        <div class="control-right">
-          <button class="chip wa-chip" id="waOptIn" type="button">
-            🟢 <strong>Recevoir les bons plans sur WhatsApp</strong>
-            <span class="meta">Gratuit. 1 message/jour max.</span>
-          </button>
-        </div>
-      </div>
+Triées intelligemment (meilleure valeur en premier)
 
-      <div class="loader-wrap">
-        <div class="loader" id="loader" aria-live="polite">
-          <span class="spinner" aria-hidden="true"></span>
-          <span id="loaderText">Recherche en cours…</span>
-        </div>
-      </div>
+Mais visibles toutes
 
-      <div class="results" id="results"></div>
+Parfait.
 
-      <div class="filters-secondary" id="usageSecondary" style="display:none">
-        <div class="filter-row">
-          <button class="filter-btn active" type="button" data-u="data">📱 Data</button>
-          <button class="filter-btn" type="button" data-u="mixte">🔄 Mixte</button>
-          <button class="filter-btn" type="button" data-u="appels">📞 Appels</button>
-        </div>
-      </div>
+🔥 MAINTENANT : CE QUE TON DEV DOIT REVOIR CLAIREMENT
 
-      <div class="habit" id="habitMsg" style="display:none">
-        <div class="section-card">
-          Beaucoup prennent le même forfait par <strong>habitude</strong>. Vérifie toujours avant d’acheter.
-        </div>
-      </div>
+Je vais te faire une checklist prête à envoyer.
 
-      <footer>© 2026 Doylu • Site indépendant des opérateurs.</footer>
-    </div>
-  </main>
+✅ 1️⃣ REMETTRE LE CHAMP LIBRE BUDGET (OBLIGATOIRE)
+À ajouter en haut :
+[ 💰 J’ai ______ FCFA ]
 
-  <main id="page_promos" class="hidden-page">
-    <div class="container">
-      <section class="hero">
-        <h1>Promos du moment (vérifiées)</h1>
-        <p>Mis à jour chaque jour. Codes USSD prêts à copier.</p>
-      </section>
-      <div class="results" id="promoResults"></div>
-      <footer>© 2026 Doylu • Site indépendant des opérateurs.</footer>
-    </div>
-  </main>
 
-  <main id="page_guide" class="hidden-page">
-    <div class="container">
-      <section class="hero">
-        <h1>Tous les codes USSD utiles (Sénégal)</h1>
-        <p>Pour acheter un pass, vérifier ton solde, consulter tes bonus, etc.</p>
-      </section>
+Champ numérique uniquement
 
-      <div class="box" style="max-width:920px">
-        <div class="bold mb8">Par opérateur (peut varier selon offre)</div>
+Bouton “Voir les offres”
 
-        <div class="accordion">
-          <div class="acc-head">Orange <span>▾</span></div>
-          <div class="acc-body">
-            <div class="acc-row"><strong>Catalogue Pass</strong><span>#1234# (offline)</span></div>
-            <div class="acc-row"><strong>Solde crédit</strong><span>*123# (exemple)</span></div>
-          </div>
+Auto-submit si possible
 
-          <div class="acc-head">Free <span>▾</span></div>
-          <div class="acc-body">
-            <div class="acc-row"><strong>Solde crédit</strong><span>*xxx#</span></div>
-          </div>
+En dessous :
 
-          <div class="acc-head">Expresso <span>▾</span></div>
-          <div class="acc-body">
-            <div class="acc-row"><strong>Solde crédit</strong><span>*xxx#</span></div>
-          </div>
-        </div>
+Boutons rapides :
+500 | 1000 | 2000 | 3000 | 5000
 
-        <div class="mt14">
-          <button class="btn cta2" type="button" id="backHomeBtn">🔎 Retour accueil</button>
-        </div>
-      </div>
+👉 Le champ libre doit être prioritaire visuellement.
 
-      <footer>© 2026 Doylu • Site indépendant des opérateurs.</footer>
-    </div>
-  </main>
+✅ 2️⃣ RÉDUIRE LES ESPACES (TRÈS IMPORTANT)
+Dev doit :
 
-  <main id="page_contact" class="hidden-page">
-    <div class="container">
-      <section class="hero">
-        <h1>Nous contacter</h1>
-        <p>Une promo qui ne marche pas ? Une erreur ? Une idée ?</p>
-      </section>
+Réduire padding vertical global de 30%
 
-      <div class="box" style="max-width:920px">
-        <div class="row">
-          <button class="btn cta2" type="button" id="reportBtn">Signaler une offre</button>
-          <button class="btn cta2" type="button" id="sendPromoBtn">Envoyer une promo SMS</button>
-          <button class="btn whatsapp" type="button" id="waSupportBtn">🟢 WhatsApp Business</button>
-        </div>
+Réduire margin entre sections
 
-        <div class="muted mt12">
-          Doylu est indépendant des opérateurs. Les offres sont informatives et vérifiées.
-        </div>
-      </div>
+Réduire hauteur des cartes
 
-      <footer>© 2026 Doylu • Site indépendant des opérateurs.</footer>
-    </div>
-  </main>
+Réduire espace sous le hero
 
-  <div class="sticky" id="sticky">
-    <button class="btn cta2" type="button" id="stickyBtn">⚡ Voir meilleur pass</button>
-  </div>
+Objectif :
 
-  <div class="toast" id="toast">Code copié ✅</div>
+Moins de scroll.
+Plus dense.
+Plus “outil”.
 
-  <div class="modal-backdrop" id="modalBackdrop">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-      <h3 id="modalTitle">Info</h3>
-      <div id="modalBody"></div>
-      <button class="close" type="button" id="modalCloseBtn">OK</button>
-    </div>
-  </div>
+✅ 3️⃣ RÉDUIRE TAILLE DES TEXTES EN MOBILE
 
-  <div id="adminPanel" aria-hidden="true">
-    <div class="admin-topbar">
-      <h3>🔐 Admin (invisible au public)</h3>
-      <div class="admin-note">Accès via <strong>ton-site/#admin</strong> + mot de passe.</div>
-      <div class="small-muted">V1 simple : offres stockées dans script.js.</div>
-      <div class="hr"></div>
+Actuellement trop gros.
 
-      <button class="btn cta2 admin-btn" type="button" id="adminAddOfferBtn">➕ Ajouter une offre</button>
-      <button class="btn cta2 admin-btn" type="button" id="adminAddSourceBtn">➕ Ajouter une source</button>
-      <button class="btn cta2 admin-btn" type="button" id="adminRecomputeBtn">🔁 Recalculer</button>
+Dev doit :
 
-      <div class="hr"></div>
-      <button class="btn gray admin-btn" type="button" id="adminExportBtn">⬇️ Export JSON</button>
-      <button class="btn gray admin-btn" type="button" id="adminImportBtn">⬆️ Import JSON (fichier)</button>
-      <button class="btn gray admin-btn" type="button" id="adminPasteBtn">📋 Coller JSON</button>
+Diminuer font-size des titres de 15%
 
-      <input type="file" id="adminImportFile" accept="application/json" class="hidden" />
-    </div>
+Diminuer taille du prix légèrement
 
-    <div id="adminList"></div>
-  </div>
+Garder lisible mais plus compact
 
-  <script src="./script.js" defer></script>
-</body>
-</html>
+✅ 4️⃣ CARTES OFFRES PLUS COMPACTES
+Modifier :
+
+Prix gros mais moins énorme
+
+Data + validité sur UNE seule ligne
+
+Boutons moins hauts
+
+Moins d’espace interne
+
+Chaque carte doit prendre 20–25% de hauteur en moins.
+
+✅ 5️⃣ SUPPRIMER LES ÉLÉMENTS FAIBLES
+
+À retirer :
+
+“0 recherches ce mois-ci”
+
+Blocs vides gris
+
+Sections qui disent “Pas encore de données”
+
+Si vide → masquer section.
+
+✅ 6️⃣ RENDRE LES RÉSULTATS PLUS DENSES
+
+Quand budget sélectionné :
+
+Afficher :
+
+Tri par meilleure valeur par défaut
+
+Toutes les offres sous le budget
+
+Compactes
+
+Scroll rapide
+
+Pas trop d’air.
+
+✅ 7️⃣ MOBILE = PRIORITÉ ABSOLUE
+
+Dev doit tester :
+
+Sur petit écran Android
+
+Scroll fluide
+
+Boutons pas énormes
+
+Pas trop d’espace blanc
+
+🎯 OBJECTIF UX V1
+
+Quand quelqu’un ouvre Doylu :
+
+Il tape son budget
+
+Il voit 3–5 offres
+
+Il compare vite
+
+Il clique
+
+Il achète
+
+Temps total : < 20 secondes
+
+🧠 Maintenant je vais te dire un truc important
+
+Ton site est bon.
+
+Mais pour devenir incontournable :
+
+Il doit ressembler moins à une “landing page”
+et plus à une “machine à comparer”.
+
+Moins design.
+Plus efficacité.
