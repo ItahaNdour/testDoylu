@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Doylu — Compare les meilleurs pass</title>
+  <title>Doylu — Comparateur de pass</title>
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
@@ -14,7 +14,7 @@
       </div>
 
       <nav class="desktop" aria-label="Menu">
-        <a href="#home" id="nav_home">Accueil</a>
+        <a href="#home" id="nav_home" class="active">Accueil</a>
         <a href="#promos" id="nav_promos">Promos</a>
         <a href="#guide" id="nav_guide">Guide USSD</a>
         <a href="#contact" id="nav_contact">Contact</a>
@@ -24,7 +24,7 @@
     </div>
 
     <div class="mobile-menu hidden" id="mobileMenu">
-      <a href="#home" id="mnav_home">Accueil</a>
+      <a href="#home" id="mnav_home" class="active">Accueil</a>
       <a href="#promos" id="mnav_promos">Promos</a>
       <a href="#guide" id="mnav_guide">Guide USSD</a>
       <a href="#contact" id="mnav_contact">Contact</a>
@@ -36,7 +36,7 @@
     <div class="container">
       <section class="hero">
         <h1>Avant d’acheter ton pass, vérifie ici.</h1>
-        <p>Compare les offres selon ton budget. <span class="muted-inline">Données vérifiées, prêtes à copier.</span></p>
+        <p>Le meilleur pass selon ton usage et ton budget. <span class="muted-inline">Données vérifiées, prêtes à copier.</span></p>
       </section>
 
       <div class="box">
@@ -59,9 +59,10 @@
         </div>
       </div>
 
+      <!-- Usage -->
       <div class="controls">
         <div class="control-left">
-          <span class="chip small">🎯 Ton besoin</span>
+          <span class="chip small">🎯 Ton usage</span>
           <button class="chip active" type="button" data-u="data">📱 Data</button>
           <button class="chip" type="button" data-u="mixte">🔄 Mixte</button>
           <button class="chip" type="button" data-u="appels">📞 Appels</button>
@@ -74,6 +75,7 @@
         </div>
       </div>
 
+      <!-- Validité (universelle) -->
       <div class="controls" style="margin-top:8px">
         <div class="control-left">
           <span class="chip small">⏱ Validité</span>
@@ -97,13 +99,6 @@
       <div class="habit" id="habitMsg" style="display:none">
         <div class="section-card">
           Beaucoup prennent le même forfait par <strong>habitude</strong>. Vérifie toujours avant d’acheter.
-        </div>
-      </div>
-
-      <div class="section" id="popularSection" style="display:none">
-        <div class="section-title">🔥 Les plus choisis ce mois-ci</div>
-        <div class="section-card">
-          <div id="popularList" class="section-sub"></div>
         </div>
       </div>
 
@@ -209,7 +204,7 @@
     </div>
   </div>
 
-  <!-- ADMIN (invisible au public) -->
+  <!-- ADMIN (invisible public) -->
   <div id="adminPanel" aria-hidden="true">
     <div class="admin-topbar">
       <h3>🔐 Admin (invisible au public)</h3>
