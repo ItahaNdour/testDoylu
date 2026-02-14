@@ -115,7 +115,8 @@ function syncFromBundle() {
   SOURCES = Array.isArray(BUNDLE.sources) ? BUNDLE.sources : [];
 }
 
-/* scoring */
+/* ================= SCORING ================= */
+
 function dataPerFcfa(o) { return (o.data_mb && o.price_fcfa) ? (Number(o.data_mb) / Number(o.price_fcfa)) : 0; }
 function minutesPerFcfa(o) { return (o.minutes && o.price_fcfa) ? (Number(o.minutes) / Number(o.price_fcfa)) : 0; }
 function durationFactor(days) {
@@ -134,13 +135,20 @@ function promoFactor(o) { return o.promo_limited ? 1.05 : 1.0; }
 function offerScore(o, usage) {
   const d = dataPerFcfa(o);
   const m = minutesPerFcfa(o);
-  const w = usage === "data" ? { wd: 1.0, wm: 0.10 } : usage === "appels" ? { wd: 0.10, wm: 1.0 } : { wd: 0.70, wm: 0.70 };
+  const w = usage === "data"
+    ? { wd: 1.0, wm: 0.10 }
+    : usage === "appels"
+      ? { wd: 0.10, wm: 1.0 }
+      : { wd: 0.70, wm: 0.70 };
+
   let base = (d * w.wd) + (m * w.wm);
   base *= durationFactor(o.validity_days);
   base *= restrictionFactor(o);
   base *= promoFactor(o);
   return base;
 }
+
+/* ================= DISPLAY HELPERS ================= */
 
 function operatorCode(op) {
   if (op === "Orange") return "O";
@@ -174,6 +182,8 @@ function oneBadge(o) {
   return { cls: "official", label: "Source officielle" };
 }
 
+/* ================= UI HELPERS ================= */
+
 function toggleLoader(on, text = "Recherche en cours…") {
   const loader = $("loader");
   if (!loader) return;
@@ -185,7 +195,6 @@ function setLastUpdate() {
   if (!el) return;
   el.textContent = `aujourd’hui ${nowHHmm()}`;
 }
-
 function showToast(msg) {
   const t = $("toast");
   if (!t) return;
@@ -202,7 +211,8 @@ function shareWhatsApp(title, price, ussd) {
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
 }
 
-/* modal */
+/* ================= MODAL ================= */
+
 function openModal(title, html) {
   $("modalTitle").textContent = title || "Info";
   $("modalBody").innerHTML = html || "<p></p>";
@@ -219,7 +229,8 @@ function openHowVerify() {
   `);
 }
 
-/* pages */
+/* ================= PAGES ================= */
+
 const PAGES = ["home", "promos", "guide", "contact"];
 function currentPageFromHash() {
   const h = (window.location.hash || "#home").replace("#", "");
@@ -240,7 +251,8 @@ function toggleMobileMenu(forceClose = false) {
   menu.classList.toggle("hidden");
 }
 
-/* filters */
+/* ================= FILTERS ================= */
+
 function passesOperator(o) {
   if (selectedOperator === "any") return true;
   return o.operator === selectedOperator;
@@ -250,8 +262,8 @@ function passesValidity(o) {
   const v = Number(selectedValidity);
   const d = Number(o.validity_days || 0);
   if (!d) return false;
-  if (v === 1) return d <= 1;
-  return d >= v;
+  if (v === 1) return d <= 1;       // 24h
+  return d >= v;                    // 7 / 30
 }
 function offerIsDisplayable(o, budget) {
   if (o.hidden) return false;
@@ -272,7 +284,13 @@ function computeResults() {
   return rows;
 }
 
-/* ✅ GAIN: Mo < 1024 (arrondi 50), sinon Go (arrondi 0,5) */
+/* ================= BENEFIT (EXERGUE) ================= */
+
+/**
+ * Règles :
+ * - Si delta < 1024 Mo => afficher en Mo (arrondi au 50 Mo)
+ * - Si delta >= 1024 Mo => afficher en Go (arrondi au 0,5 Go)
+ */
 function formatDeltaFromMb(deltaMb) {
   const mb = Number(deltaMb || 0);
   if (!(mb > 0)) return null;
@@ -291,16 +309,41 @@ function formatDeltaFromMb(deltaMb) {
   return `+${label} Go de plus que l’offre suivante`;
 }
 
-function calcGainData(best, second) {
-  if (selectedUsage !== "data") return null;
+/**
+ * BENEFICE V1:
+ * 1) Data en plus (si usage=data et best.data > second.data)
+ * 2) Sinon Economie FCFA (best moins cher que second)
+ * 3) Sinon Validité en plus (best plus de jours que second)
+ */
+function calcBenefitLine(best, second) {
   if (!best || !second) return null;
-  if (!best.data_mb || !second.data_mb) return null;
 
-  const delta = Number(best.data_mb) - Number(second.data_mb);
-  if (!(delta > 0)) return null;
+  // 1) Gain data (uniquement en mode data)
+  if (selectedUsage === "data" && best.data_mb && second.data_mb) {
+    const deltaMb = Number(best.data_mb) - Number(second.data_mb);
+    const gain = formatDeltaFromMb(deltaMb);
+    if (gain) return gain;
+  }
 
-  return formatDeltaFromMb(delta);
+  // 2) Economie
+  const p1 = Number(best.price_fcfa || 0);
+  const p2 = Number(second.price_fcfa || 0);
+  if (p1 && p2 && p1 < p2) {
+    const save = p2 - p1;
+    if (save > 0) return `Économise ${formatMoney(save)} FCFA vs l’offre suivante`;
+  }
+
+  // 3) Validité
+  const d1 = Number(best.validity_days || 0);
+  const d2 = Number(second.validity_days || 0);
+  if (d1 && d2 && d1 > d2) {
+    return `+${d1 - d2} jour(s) de validité vs l’offre suivante`;
+  }
+
+  return null;
 }
+
+/* ================= RENDER ================= */
 
 function renderBestPick(best, rows) {
   const el = $("bestPick");
@@ -309,14 +352,23 @@ function renderBestPick(best, rows) {
   if (!best) { el.style.display = "none"; el.innerHTML = ""; return; }
 
   const title = `${best.operator} — ${best.name}`;
-  const gainLine = rows.length >= 2 ? calcGainData(rows[0], rows[1]) : null;
+  const benefit = rows.length >= 2 ? calcBenefitLine(rows[0], rows[1]) : null;
 
   el.style.display = "block";
   el.innerHTML = `
     <div class="best-card">
-      <div class="best-title">🔥 Meilleure valeur pour ${formatMoney(selectedBudget)} FCFA (${selectedUsage})</div>
-      ${gainLine ? `<div class="best-gain">${escapeHtml(gainLine)}</div>` : ``}
-      <div class="best-sub">${escapeHtml(title)} • ${escapeHtml(metaLine(best))} • <strong>${formatMoney(best.price_fcfa)} FCFA</strong> — ${rows.length} offre(s)</div>
+      <div class="best-title">🔥 Meilleure valeur pour ${formatMoney(selectedBudget)} FCFA (${escapeHtml(selectedUsage)})</div>
+
+      ${benefit ? `
+        <div class="best-benefit" role="note" aria-label="Bénéfice">
+          <span class="spark">✨</span>
+          <span class="benefit-text">${escapeHtml(benefit)}</span>
+        </div>
+      ` : ``}
+
+      <div class="best-sub">
+        ${escapeHtml(title)} • ${escapeHtml(metaLine(best))} • <strong>${formatMoney(best.price_fcfa)} FCFA</strong> — ${rows.length} offre(s)
+      </div>
     </div>
   `;
 }
@@ -649,7 +701,6 @@ function openPasteImportModal() {
   });
 }
 
-/* admin route */
 function openAdminIfAllowed() {
   if (prompt("Mot de passe admin ?") !== ADMIN_PASSWORD) {
     window.location.hash = "#home";
@@ -669,13 +720,15 @@ function handleAdminRoute() {
   else closeAdmin();
 }
 
-/* events */
+/* ================= EVENTS ================= */
+
 function bindEvents() {
   $("brandBtn")?.addEventListener("click", () => window.location.hash = "#home");
-  $("brandBtn")?.addEventListener("keydown", (e) => { if (e.key === "Enter") window.location.hash = "#home"; });
-
   $("hamburgerBtn")?.addEventListener("click", () => toggleMobileMenu());
-  ["home", "promos", "guide", "contact"].forEach(p => $("mnav_" + p)?.addEventListener("click", () => toggleMobileMenu(true)));
+
+  ["home", "promos", "guide", "contact"].forEach(p =>
+    $("mnav_" + p)?.addEventListener("click", () => toggleMobileMenu(true))
+  );
 
   $("howVerifyLink")?.addEventListener("click", (e) => { e.preventDefault(); openHowVerify(); });
   $("howVerifyBtn2")?.addEventListener("click", openHowVerify);
@@ -771,7 +824,8 @@ function bindEvents() {
   });
 }
 
-/* boot */
+/* ================= BOOT ================= */
+
 function boot() {
   loadBundle();
   syncFromBundle();
