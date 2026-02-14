@@ -1,232 +1,252 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Doylu — Comparateur de pass</title>
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
-  <header>
-    <div class="header-inner">
-      <div class="brand" id="brandBtn" role="button" tabindex="0" aria-label="Aller à l'accueil">
-        <div class="mark">D</div><div class="brand-name">Doylu</div>
-      </div>
+  <header class="header">
+    <button class="brand" id="brandBtn" type="button" aria-label="Accueil Doylu">
+      <span class="brandMark">D</span>
+      <span class="brandName">Doylu</span>
+    </button>
 
-      <nav class="desktop" aria-label="Menu">
-        <a href="#home" id="nav_home" class="active">Accueil</a>
-        <a href="#promos" id="nav_promos">Promos</a>
-        <a href="#guide" id="nav_guide">Guide USSD</a>
-        <a href="#contact" id="nav_contact">Contact</a>
-      </nav>
+    <nav class="navDesktop" aria-label="Navigation principale">
+      <a id="nav_home" href="#home" class="navLink active">Accueil</a>
+      <a id="nav_promos" href="#promos" class="navLink">Promos</a>
+      <a id="nav_guide" href="#guide" class="navLink">Guide USSD</a>
+      <a id="nav_contact" href="#contact" class="navLink">Contact</a>
+    </nav>
 
-      <button class="hamburger" id="hamburgerBtn" aria-label="Ouvrir le menu">☰</button>
-    </div>
-
-    <div class="mobile-menu hidden" id="mobileMenu">
-      <a href="#home" id="mnav_home" class="active">Accueil</a>
-      <a href="#promos" id="mnav_promos">Promos</a>
-      <a href="#guide" id="mnav_guide">Guide USSD</a>
-      <a href="#contact" id="mnav_contact">Contact</a>
-    </div>
+    <button class="hamburger" id="hamburgerBtn" type="button" aria-label="Menu">
+      ☰
+    </button>
   </header>
 
-  <!-- HOME -->
-  <main id="page_home">
-    <div class="container">
-      <section class="hero">
+  <div class="mobileMenu hidden" id="mobileMenu" aria-label="Menu mobile">
+    <a id="mnav_home" href="#home" class="navLink active">Accueil</a>
+    <a id="mnav_promos" href="#promos" class="navLink">Promos</a>
+    <a id="mnav_guide" href="#guide" class="navLink">Guide USSD</a>
+    <a id="mnav_contact" href="#contact" class="navLink">Contact</a>
+  </div>
+
+  <main class="container">
+    <!-- HOME -->
+    <section id="page_home">
+      <div class="hero">
         <h1>Avant d’acheter ton pass, vérifie ici.</h1>
-        <p>Le meilleur pass selon ton usage et ton budget. <span class="muted-inline">Données vérifiées, prêtes à copier.</span></p>
-      </section>
+        <p class="sub">
+          Compare les offres selon ton budget. <strong>Données vérifiées</strong>, prêtes à copier.
+        </p>
 
-      <div class="box">
-        <div class="form-title">💰 Ton budget (FCFA)</div>
-
-        <div class="budget-row">
-          <input id="budgetInput" inputmode="numeric" type="number" min="0" placeholder="Ex: 1500" />
-          <button class="btn cta" id="findBtn" type="button">Voir les offres</button>
-        </div>
-
-        <div class="budget-grid" id="budgetGrid"></div>
-
-        <div class="subhint">
-          <div class="trust-line">
-            <span class="trust-pill">🔒 Vérifiées SMS/USSD</span>
-            <span class="trust-pill">⚖️ Site indépendant</span>
-            <span class="trust-pill">Dernière MAJ: <strong id="lastUpdate">—</strong></span>
+        <div class="heroCard">
+          <div class="budgetRow">
+            <div class="budgetLeft">
+              <div class="label">💰 Ton budget (FCFA)</div>
+              <input id="budgetInput" class="input" inputmode="numeric" type="number" placeholder="Ex: 1500" />
+            </div>
+            <button id="findBtn" class="btnPrimary" type="button">Voir les offres</button>
           </div>
-          <a class="link" href="#" id="howVerifyLink">Comment on vérifie ?</a>
-        </div>
-      </div>
 
-      <!-- Usage -->
-      <div class="controls">
-        <div class="control-left">
-          <span class="chip small">🎯 Ton usage</span>
-          <button class="chip active" type="button" data-u="data">📱 Data</button>
-          <button class="chip" type="button" data-u="mixte">🔄 Mixte</button>
-          <button class="chip" type="button" data-u="appels">📞 Appels</button>
+          <div class="budgetGrid" id="budgetGrid" aria-label="Budgets rapides"></div>
+
+          <div class="trustRow">
+            <span class="pill">🔒 Vérifiées SMS/USSD</span>
+            <span class="pill">⚖️ Site indépendant</span>
+            <span class="pill">Dernière MAJ : <strong id="lastUpdate">—</strong></span>
+            <a class="verifyLink" id="howVerifyLink" href="#how">Comment on vérifie ?</a>
+          </div>
         </div>
-        <div class="control-right">
-          <button class="chip wa-chip" id="waOptIn" type="button">
-            🟢 <strong>Recevoir les bons plans sur WhatsApp</strong>
-            <span class="meta">Gratuit. 1 message/jour max.</span>
+
+        <div class="filtersWrap">
+          <div class="filtersLeft">
+            <div class="filterGroup">
+              <div class="filterTitle">🎯 Ton usage</div>
+              <div class="chips">
+                <button class="chip active" type="button" data-u="data">📱 Data</button>
+                <button class="chip" type="button" data-u="mixte">🔄 Mixte</button>
+                <button class="chip" type="button" data-u="appels">📞 Appels</button>
+              </div>
+            </div>
+
+            <div class="filterGroup">
+              <div class="filterTitle">📶 Opérateur</div>
+              <div class="chips">
+                <button class="chip active" type="button" data-op="any">Tous</button>
+                <button class="chip" type="button" data-op="Orange">Orange</button>
+                <button class="chip" type="button" data-op="Free">Free</button>
+                <button class="chip" type="button" data-op="Expresso">Expresso</button>
+                <button class="chip" type="button" data-op="Lebara">Lebara</button>
+              </div>
+            </div>
+
+            <div class="filterGroup">
+              <div class="filterTitle">⏱ Validité</div>
+              <div class="chips">
+                <button class="chip active" type="button" data-v="any">Toutes</button>
+                <button class="chip" type="button" data-v="1">24h</button>
+                <button class="chip" type="button" data-v="7">7 jours</button>
+                <button class="chip" type="button" data-v="30">30 jours</button>
+              </div>
+            </div>
+          </div>
+
+          <button class="waOptIn" id="waOptIn" type="button">
+            🟢 Recevoir les bons plans sur WhatsApp
+            <span class="waSmall">Gratuit. 1 message/jour max.</span>
           </button>
         </div>
       </div>
 
-      <!-- Validité (universelle) -->
-      <div class="controls" style="margin-top:8px">
-        <div class="control-left">
-          <span class="chip small">⏱ Validité</span>
-          <button class="chip active" type="button" data-v="any">Toutes</button>
-          <button class="chip" type="button" data-v="1">24h</button>
-          <button class="chip" type="button" data-v="7">7 jours</button>
-          <button class="chip" type="button" data-v="30">30 jours</button>
+      <div id="bestPick" class="bestPick" style="display:none;"></div>
+
+      <div id="loader" class="loader" style="display:none;">
+        <div class="spinner"></div>
+        <div id="loaderText">Recherche en cours…</div>
+      </div>
+
+      <div id="results" class="resultsGrid"></div>
+
+      <div id="habitMsg" class="habitMsg" style="display:none;">
+        Beaucoup prennent le même forfait par habitude. <strong>Vérifie toujours avant d’acheter.</strong>
+      </div>
+    </section>
+
+    <!-- PROMOS -->
+    <section id="page_promos" class="hidden-page">
+      <div class="pageHead">
+        <h2>Promos du moment (vérifiées)</h2>
+        <p class="muted">Mis à jour régulièrement. Codes USSD prêts à copier.</p>
+        <button class="btnGhost" id="howVerifyBtn2" type="button">Comment on vérifie ?</button>
+      </div>
+      <div id="promoResults" class="resultsGrid"></div>
+    </section>
+
+    <!-- GUIDE -->
+    <section id="page_guide" class="hidden-page">
+      <div class="pageHead">
+        <h2>Tous les codes USSD utiles (Sénégal)</h2>
+        <p class="muted">Acheter un pass, vérifier ton solde, consulter tes bonus, etc.</p>
+      </div>
+
+      <details class="accordion">
+        <summary>Orange</summary>
+        <div class="accBody">
+          <div class="accLine"><strong>Catalogue Pass :</strong> #1234# (offline)</div>
+          <div class="accLine"><strong>Solde crédit :</strong> *123# (exemple)</div>
+          <div class="accHint">(peut varier selon offre)</div>
+        </div>
+      </details>
+
+      <details class="accordion">
+        <summary>Free</summary>
+        <div class="accBody">
+          <div class="accLine"><strong>Solde crédit :</strong> *xxx#</div>
+          <div class="accHint">(à confirmer)</div>
+        </div>
+      </details>
+
+      <details class="accordion">
+        <summary>Expresso</summary>
+        <div class="accBody">
+          <div class="accLine"><strong>Solde crédit :</strong> *xxx#</div>
+          <div class="accHint">(à confirmer)</div>
+        </div>
+      </details>
+
+      <div class="tipBox">
+        <strong>Astuces</strong>
+        <ul>
+          <li>Si un code ne marche pas : redémarre, vérifie la SIM par défaut, et essaye une autre variante.</li>
+          <li>Certains pass ne s’affichent que via SMS promo.</li>
+        </ul>
+      </div>
+
+      <a class="btnPrimary inline" href="#home">Retour accueil</a>
+    </section>
+
+    <!-- CONTACT -->
+    <section id="page_contact" class="hidden-page">
+      <div class="pageHead">
+        <h2>Nous contacter</h2>
+        <p class="muted">Une promo qui ne marche pas ? Une erreur ? Une idée ?</p>
+      </div>
+
+      <div class="contactGrid">
+        <div class="card">
+          <h3>Signaler une offre</h3>
+          <label class="smallLabel">Opérateur</label>
+          <select class="input">
+            <option>Orange</option><option>Free</option><option>Expresso</option><option>Lebara</option>
+          </select>
+          <label class="smallLabel">Détails</label>
+          <textarea class="input" rows="4" placeholder="Nom de l’offre, prix, code, ce qui ne marche pas…"></textarea>
+          <button class="btnPrimary" type="button" onclick="alert('V1: envoi à brancher plus tard.')">Envoyer</button>
+        </div>
+
+        <div class="card">
+          <h3>Envoyer une promo reçue par SMS</h3>
+          <label class="smallLabel">Copie-colle le SMS</label>
+          <textarea class="input" rows="4" placeholder="Colle le SMS ici…"></textarea>
+          <label class="smallLabel">Opérateur</label>
+          <select class="input">
+            <option>Orange</option><option>Free</option><option>Expresso</option><option>Lebara</option>
+          </select>
+          <button class="btnPrimary" type="button" onclick="alert('V1: envoi à brancher plus tard.')">Envoyer</button>
+        </div>
+
+        <div class="card">
+          <h3>Partenariat / Pub</h3>
+          <p class="muted">Doylu est indépendant des opérateurs. Partenariats possibles (clairs et transparents).</p>
+          <button class="btnGhost" type="button" onclick="alert('V1: ajoute ton email + WhatsApp business ici.')">Contacter</button>
         </div>
       </div>
 
-      <div class="loader-wrap">
-        <div class="loader" id="loader" aria-live="polite">
-          <span class="spinner" aria-hidden="true"></span>
-          <span id="loaderText">Recherche en cours…</span>
-        </div>
+      <div class="tipBox">
+        <strong>Confiance</strong>
+        <div>Doylu est indépendant des opérateurs.</div>
+        <div>Les offres sont informatives et vérifiées.</div>
       </div>
-
-      <div class="best" id="bestPick" style="display:none"></div>
-      <div class="results" id="results"></div>
-
-      <div class="habit" id="habitMsg" style="display:none">
-        <div class="section-card">
-          Beaucoup prennent le même forfait par <strong>habitude</strong>. Vérifie toujours avant d’acheter.
-        </div>
-      </div>
-
-      <footer>© 2026 Doylu • Site indépendant des opérateurs.</footer>
-    </div>
+    </section>
   </main>
 
-  <!-- PROMOS -->
-  <main id="page_promos" class="hidden-page">
-    <div class="container">
-      <section class="hero">
-        <h1>Promos du moment (vérifiées)</h1>
-        <p>Mis à jour régulièrement. Codes USSD prêts à copier.</p>
-      </section>
+  <footer class="footer">
+    © 2026 Doylu • Site indépendant des opérateurs.
+  </footer>
 
-      <div class="results" id="promoResults"></div>
+  <!-- TOAST -->
+  <div id="toast" class="toast" style="display:none;"></div>
 
-      <div class="section" style="margin-top:10px">
-        <div class="section-card">
-          <div class="row" style="justify-content:space-between;align-items:center">
-            <div>
-              <div class="bold">Confiance</div>
-              <div class="section-sub">On publie des offres reçues par SMS/USSD et confirmées. Si une promo expire, elle est retirée.</div>
-            </div>
-            <button class="btn gray" type="button" id="howVerifyBtn2">Comment on vérifie ?</button>
-          </div>
-        </div>
+  <!-- MODAL -->
+  <div id="modalBackdrop" class="modalBackdrop" style="display:none;">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modalHead">
+        <div id="modalTitle" class="modalTitle">Info</div>
+        <button id="modalCloseBtn" class="modalClose" type="button" aria-label="Fermer">✕</button>
       </div>
-
-      <footer>© 2026 Doylu • Site indépendant des opérateurs.</footer>
-    </div>
-  </main>
-
-  <!-- GUIDE -->
-  <main id="page_guide" class="hidden-page">
-    <div class="container">
-      <section class="hero">
-        <h1>Tous les codes USSD utiles (Sénégal)</h1>
-        <p>Pour acheter un pass, vérifier ton solde, consulter tes bonus, etc.</p>
-      </section>
-
-      <div class="box" style="max-width:920px">
-        <div class="bold mb8">Par opérateur <span class="muted-inline">(peut varier selon offre)</span></div>
-
-        <div class="accordion">
-          <div class="acc-head">Orange <span>▾</span></div>
-          <div class="acc-body">
-            <div class="acc-row"><strong>Catalogue Pass</strong><span>#1234# (offline)</span></div>
-            <div class="acc-row"><strong>Solde crédit</strong><span>*123# (exemple)</span></div>
-          </div>
-
-          <div class="acc-head">Free <span>▾</span></div>
-          <div class="acc-body">
-            <div class="acc-row"><strong>Solde crédit</strong><span>*xxx#</span></div>
-          </div>
-
-          <div class="acc-head">Expresso <span>▾</span></div>
-          <div class="acc-body">
-            <div class="acc-row"><strong>Solde crédit</strong><span>*xxx#</span></div>
-          </div>
-        </div>
-
-        <div class="mt14">
-          <button class="btn cta" type="button" id="backHomeBtn">🔎 Retour accueil</button>
-        </div>
-      </div>
-
-      <footer>© 2026 Doylu • Site indépendant des opérateurs.</footer>
-    </div>
-  </main>
-
-  <!-- CONTACT -->
-  <main id="page_contact" class="hidden-page">
-    <div class="container">
-      <section class="hero">
-        <h1>Nous contacter</h1>
-        <p>Une promo qui ne marche pas ? Une erreur ? Une idée ?</p>
-      </section>
-
-      <div class="box" style="max-width:920px">
-        <div class="row">
-          <button class="btn cta" type="button" id="reportBtn">Signaler une offre</button>
-          <button class="btn cta" type="button" id="sendPromoBtn">Envoyer une promo reçue par SMS</button>
-          <button class="btn whatsapp" type="button" id="waSupportBtn">🟢 WhatsApp Business</button>
-        </div>
-
-        <div class="muted mt12">
-          Doylu est indépendant des opérateurs. Les offres sont informatives et vérifiées.
-        </div>
-      </div>
-
-      <footer>© 2026 Doylu • Site indépendant des opérateurs.</footer>
-    </div>
-  </main>
-
-  <div class="toast" id="toast">Code copié ✅</div>
-
-  <div class="modal-backdrop" id="modalBackdrop">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-      <h3 id="modalTitle">Info</h3>
-      <div id="modalBody"></div>
-      <button class="close" type="button" id="modalCloseBtn">OK</button>
+      <div id="modalBody" class="modalBody"></div>
     </div>
   </div>
 
   <!-- ADMIN (invisible public) -->
-  <div id="adminPanel" aria-hidden="true">
-    <div class="admin-topbar">
-      <h3>🔐 Admin (invisible au public)</h3>
-      <div class="admin-note">Accès via <strong>ton-site/#admin</strong> + mot de passe.</div>
-
-      <div class="hr"></div>
-
-      <button class="btn cta admin-btn" type="button" id="adminAddOfferBtn">➕ Ajouter une offre</button>
-      <button class="btn cta admin-btn" type="button" id="adminRecomputeBtn">🔁 Recalculer</button>
-
-      <div class="hr"></div>
-
-      <button class="btn gray admin-btn" type="button" id="adminExportBtn">⬇️ Export JSON</button>
-      <button class="btn gray admin-btn" type="button" id="adminImportBtn">⬆️ Import JSON (fichier)</button>
-      <button class="btn gray admin-btn" type="button" id="adminPasteBtn">📋 Coller JSON</button>
-
-      <input type="file" id="adminImportFile" accept="application/json" class="hidden" />
+  <div id="adminPanel" class="adminPanel" style="display:none;" aria-hidden="true">
+    <div class="adminTop">
+      <div class="adminTitle">Admin (invisible au public)</div>
+      <div class="adminActions">
+        <button id="adminAddOfferBtn" class="btnGhost" type="button">+ Offre</button>
+        <button id="adminRecomputeBtn" class="btnGhost" type="button">Sauver / Recharger</button>
+        <button id="adminExportBtn" class="btnGhost" type="button">Export JSON</button>
+        <button id="adminPasteBtn" class="btnGhost" type="button">Coller JSON</button>
+        <button id="adminImportBtn" class="btnGhost" type="button">Import JSON</button>
+        <input id="adminImportFile" type="file" accept="application/json" style="display:none" />
+      </div>
     </div>
-
-    <div id="adminList"></div>
+    <div id="adminList" class="adminList"></div>
   </div>
 
-  <script src="./script.js" defer></script>
+  <script src="script.js"></script>
 </body>
 </html>
