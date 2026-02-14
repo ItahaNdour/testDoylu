@@ -1,955 +1,1176 @@
+// /script.js
 "use strict";
 
-const ADMIN_PASSWORD = "doyluadmin";
-const STORAGE_KEY = "doylu_v1_bundle_v2"; // bump to avoid old cached logic
+/**
+ * Doylu V1
+ * - Navigation par hash (#home/#promos/#guide/#contact/#admin) => 1 section visible
+ * - Offres en mémoire + persistance (localStorage si dispo) => admin modifie => accueil voit
+ * - Filtres : budget, usage, validité, opérateur
+ * - Classement : Top choix + gain calculé UNIQUEMENT sur offres PUBLIC
+ * - Offres spé (student/corporate/special) visibles après, jamais #1
+ */
 
-function $(id) { return document.getElementById(id); }
-function pad2(n) { return String(n).padStart(2, "0"); }
-function nowHHmm() { const d = new Date(); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
-function isoNow() { return new Date().toISOString(); }
-function escapeHtml(s) {
-  return String(s ?? "")
-    .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
-}
-function formatMoney(n) {
-  try { return new Intl.NumberFormat("fr-FR").format(n); } catch { return String(n); }
-}
+const ADMIN_PASSWORD = "doylu123"; // change-le
+const WHATSAPP_NUMBER = "221770000000"; // change-le (format international sans +)
 
-const SafeStorage = (() => {
-  const memory = new Map();
-  function hasLocalStorage() {
-    try { localStorage.setItem("__t", "1"); localStorage.removeItem("__t"); return true; } catch { return false; }
-  }
-  const enabled = hasLocalStorage();
-  return {
-    getItem(k) { return enabled ? localStorage.getItem(k) : (memory.get(k) ?? null); },
-    setItem(k, v) { enabled ? localStorage.setItem(k, v) : memory.set(k, String(v)); }
-  };
-})();
+// ---------- Safe storage ----------
+const memoryStore = new Map();
 
-let BUNDLE = null;
-let OFFERS = [];
-let SOURCES = [];
-
-let selectedBudget = null;
-let selectedUsage = "data";
-let selectedValidity = "any";
-let selectedOperator = "any";
-
-/* ===================== SEED OFFERS (Orange) ===================== */
-
-function mkOffer(
-  offer_id,
-  operator,
-  name,
-  price_fcfa,
-  type_usage,
-  data_mb,
-  minutes,
-  validity_days,
-  promo_limited,
-  eligibility_type = "public"
-) {
-  const t = isoNow();
-  return {
-    offer_id,
-    operator,
-    name,
-    price_fcfa,
-    type_usage,
-    data_mb: data_mb ?? null,
-    minutes: minutes ?? null,
-    validity_days: validity_days ?? null,
-    eligibility_type: eligibility_type || "public",
-
-    validity_type: validity_days === 1 ? "24h" : validity_days === 7 ? "7j" : validity_days === 30 ? "30j" : "inconnu",
-    ussd_code: "#1234#",
-    activation_path: "#1234# > Achat pass internet",
-    status: "active",
-    promo_limited: Boolean(promo_limited),
-    is_sponsored: false,
-    hidden: false,
-    updated_at: t,
-    created_at: t,
-    last_seen_at: t
-  };
-}
-
-function seedBundle() {
-  const t = isoNow();
-
-  const offers = [
-    // Jour
-    mkOffer("off_orange_jour_300mo_200", "Orange", "Pass 300Mo", 200, "data", 300, null, 1, false, "public"),
-    mkOffer("off_orange_jour_1_5go_500", "Orange", "Pass 1,5Go", 500, "data", 1536, null, 1, false, "public"),
-    mkOffer("off_orange_jour_5go_1000", "Orange", "Pass 5Go", 1000, "data", 5120, null, 1, false, "public"),
-
-    // Nuit (special)
-    mkOffer("off_orange_nuit_5go_500", "Orange", "Pass Nuit 5Go", 500, "data", 5120, null, 1, false, "special"),
-
-    // Semaine
-    mkOffer("off_orange_sem_edu_1go_100", "Orange", "Pass Éducation 1Go", 100, "data", 1024, null, 7, false, "student"),
-    mkOffer("off_orange_sem_600mo_500", "Orange", "Pass 600Mo", 500, "data", 600, null, 7, false, "public"),
-    mkOffer("off_orange_sem_2go_1000", "Orange", "Pass 2Go", 1000, "data", 2048, null, 7, false, "public"),
-    mkOffer("off_orange_sem_10go_2500", "Orange", "Pass 10Go", 2500, "data", 10240, null, 7, false, "public"),
-
-    // Mois
-    mkOffer("off_orange_mois_5go_2000", "Orange", "Pass 5Go (Max it)", 2000, "data", 5120, null, 30, false, "public"),
-    mkOffer("off_orange_mois_promo_10go_2000", "Orange", "Promo 10Go (OM)", 2000, "data", 10240, null, 30, true, "special"),
-    mkOffer("off_orange_mois_12go_3000", "Orange", "Pass 12Go", 3000, "data", 12288, null, 30, false, "public"),
-    mkOffer("off_orange_mois_25go_5000", "Orange", "Pass 25Go", 5000, "data", 25600, null, 30, false, "public"),
-    mkOffer("off_orange_mois_60go_10000", "Orange", "Pass 60Go", 10000, "data", 61440, null, 30, false, "public"),
-    mkOffer("off_orange_mois_100go_15000", "Orange", "Pass 100Go", 15000, "data", 102400, null, 30, false, "public"),
-  ];
-
-  const sources = offers.map(o => ({
-    source_id: `src_${o.offer_id}`,
-    offer_id: o.offer_id,
-    source_type: "ussd",
-    platform: "ussd",
-    raw_text: "Vu via menu d’achat pass (captures famille).",
-    received_at: t,
-    is_official: true
-  }));
-
-  return { offers, sources, meta: { last_update: t } };
-}
-
-function loadBundle() {
-  const raw = SafeStorage.getItem(STORAGE_KEY);
-  if (!raw) {
-    BUNDLE = seedBundle();
-    persistBundle();
-    return;
-  }
+function storageAvailable() {
   try {
-    BUNDLE = JSON.parse(raw);
-    if (!BUNDLE?.offers || !BUNDLE?.sources) throw new Error("bad");
+    const k = "__doylu_test__";
+    window.localStorage.setItem(k, "1");
+    window.localStorage.removeItem(k);
+    return true;
   } catch {
-    BUNDLE = seedBundle();
-    persistBundle();
+    return false;
   }
 }
 
-function persistBundle() {
-  BUNDLE.meta = BUNDLE.meta || {};
-  BUNDLE.meta.last_update = isoNow();
-  SafeStorage.setItem(STORAGE_KEY, JSON.stringify(BUNDLE));
-}
+const canUseLS = storageAvailable();
 
-function normalizeEligibilityFromName(o) {
-  const name = String(o.name || "").toLowerCase();
-
-  if (o.eligibility_type && o.eligibility_type !== "public") return;
-
-  if (name.includes("éducation") || name.includes("education") || name.includes("etudiant") || name.includes("étudiant")) {
-    o.eligibility_type = "student";
-    return;
+function getStore(key) {
+  const raw = canUseLS ? window.localStorage.getItem(key) : memoryStore.get(key);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
   }
-  if (name.includes("nuit") || name.includes("promo") || o.promo_limited) {
-    o.eligibility_type = "special";
-    return;
-  }
-  o.eligibility_type = o.eligibility_type || "public";
 }
 
-function syncFromBundle() {
-  OFFERS = Array.isArray(BUNDLE.offers) ? BUNDLE.offers : [];
-  SOURCES = Array.isArray(BUNDLE.sources) ? BUNDLE.sources : [];
-
-  for (const o of OFFERS) {
-    if (!o.eligibility_type) o.eligibility_type = "public";
-    normalizeEligibilityFromName(o);
-  }
-  BUNDLE.offers = OFFERS;
-  BUNDLE.sources = SOURCES;
-  persistBundle();
+function setStore(key, value) {
+  const raw = JSON.stringify(value);
+  if (canUseLS) window.localStorage.setItem(key, raw);
+  else memoryStore.set(key, raw);
 }
 
-/* ===================== SCORING ===================== */
-
-function dataPerFcfa(o) { return (o.data_mb && o.price_fcfa) ? (Number(o.data_mb) / Number(o.price_fcfa)) : 0; }
-function minutesPerFcfa(o) { return (o.minutes && o.price_fcfa) ? (Number(o.minutes) / Number(o.price_fcfa)) : 0; }
-
-function durationFactor(days) {
-  const d = Number(days || 0);
-  if (!d) return 1.0;
-  return 1.0 + Math.min(0.22, Math.log10(d + 1) * 0.18);
+function delStore(key) {
+  if (canUseLS) window.localStorage.removeItem(key);
+  else memoryStore.delete(key);
 }
 
-function restrictionFactor(o) {
-  const name = String(o.name || "").toLowerCase();
-  let f = 1.0;
-  if (name.includes("nuit")) f *= 0.82;
-  if (name.includes("éducation") || name.includes("education")) f *= 0.85;
-  return f;
+// ---------- Data model ----------
+function uid() {
+  return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
-function promoFactor(o) { return o.promo_limited ? 1.05 : 1.0; }
-
-function offerScore(o, usage) {
-  const d = dataPerFcfa(o);
-  const m = minutesPerFcfa(o);
-
-  const w = usage === "data"
-    ? { wd: 1.0, wm: 0.10 }
-    : usage === "appels"
-      ? { wd: 0.10, wm: 1.0 }
-      : { wd: 0.70, wm: 0.70 };
-
-  let base = (d * w.wd) + (m * w.wm);
-  base *= durationFactor(o.validity_days);
-  base *= restrictionFactor(o);
-  base *= promoFactor(o);
-  return base;
+function nowISO() {
+  return new Date().toISOString();
 }
 
-/* ===================== DISPLAY ===================== */
-
-function operatorCode(op) {
-  if (op === "Orange") return "O";
-  if (op === "Free") return "F";
-  if (op === "Expresso") return "E";
-  return "L";
-}
-function goFromMb(mb) { return mb ? mb / 1024 : null; }
-
-function displayData(o) {
-  if (!o.data_mb) return null;
-  const go = goFromMb(o.data_mb);
-  if (go >= 1) return `${(Math.round(go * 10) / 10).toString().replace(".", ",")} Go`;
-  return `${o.data_mb} Mo`;
+function clampNum(v, fallback = null) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
 }
 
-function validityLabel(o) {
-  if (o.validity_days === 1) return "24h";
-  if (o.validity_days === 7) return "7 jours";
-  if (o.validity_days === 30) return "30 jours";
-  return "Inconnu";
+function mbFromGo(go) {
+  return Math.round(go * 1024);
 }
 
-function metaLine(o) {
-  const parts = [];
-  const d = displayData(o);
-  if (d) parts.push(`📱 ${d}`);
-  if (o.minutes) parts.push(`📞 ${o.minutes} min`);
-  parts.push(`⏱ ${validityLabel(o)}`);
-  return parts.join(" • ");
+const DEFAULT_OFFERS = [
+  // Orange (sources USSD / app screenshots)
+  {
+    offer_id: uid(),
+    country: "SN",
+    operator: "Orange",
+    name: "Pass Jour 300Mo",
+    price_fcfa: 200,
+    type_usage: "data",
+    data_mb: 300,
+    minutes: null,
+    sms: null,
+    validity_days: 1,
+    ussd_code: "*1234#",
+    activation_path: "*1234# > Internet > Jour > 300Mo",
+    status: "active",
+    confidence_score: 85,
+    is_verified: true,
+    is_promo: false,
+    eligibility_type: "public",
+    source_label: "Source officielle",
+    last_seen_at: nowISO(),
+    created_at: nowISO(),
+    updated_at: nowISO(),
+  },
+  {
+    offer_id: uid(),
+    country: "SN",
+    operator: "Orange",
+    name: "Pass Jour 1,5Go",
+    price_fcfa: 500,
+    type_usage: "data",
+    data_mb: mbFromGo(1.5),
+    minutes: null,
+    sms: null,
+    validity_days: 1,
+    ussd_code: "*1234#",
+    activation_path: "*1234# > Internet > Jour > 1,5Go",
+    status: "active",
+    confidence_score: 82,
+    is_verified: true,
+    is_promo: false,
+    eligibility_type: "public",
+    source_label: "Source officielle",
+    last_seen_at: nowISO(),
+    created_at: nowISO(),
+    updated_at: nowISO(),
+  },
+  {
+    offer_id: uid(),
+    country: "SN",
+    operator: "Orange",
+    name: "Pass Jour 5Go",
+    price_fcfa: 1000,
+    type_usage: "data",
+    data_mb: mbFromGo(5),
+    minutes: null,
+    sms: null,
+    validity_days: 1,
+    ussd_code: "*1234#",
+    activation_path: "*1234# > Internet > Jour > 5Go",
+    status: "active",
+    confidence_score: 80,
+    is_verified: true,
+    is_promo: false,
+    eligibility_type: "public",
+    source_label: "Source officielle",
+    last_seen_at: nowISO(),
+    created_at: nowISO(),
+    updated_at: nowISO(),
+  },
+  {
+    offer_id: uid(),
+    country: "SN",
+    operator: "Orange",
+    name: "Pass Nuit 5Go",
+    price_fcfa: 500,
+    type_usage: "data",
+    data_mb: mbFromGo(5),
+    minutes: null,
+    sms: null,
+    validity_days: 1,
+    ussd_code: "*1234#",
+    activation_path: "*1234# > Internet > Nuit > 5Go",
+    status: "active",
+    confidence_score: 78,
+    is_verified: false,
+    is_promo: false,
+    eligibility_type: "public",
+    source_label: "Source officielle",
+    last_seen_at: nowISO(),
+    created_at: nowISO(),
+    updated_at: nowISO(),
+  },
+  {
+    offer_id: uid(),
+    country: "SN",
+    operator: "Orange",
+    name: "Pass Semaine 600Mo",
+    price_fcfa: 500,
+    type_usage: "data",
+    data_mb: 600,
+    minutes: null,
+    sms: null,
+    validity_days: 7,
+    ussd_code: "*1234#",
+    activation_path: "*1234# > Internet > Semaine > 600Mo",
+    status: "active",
+    confidence_score: 75,
+    is_verified: false,
+    is_promo: false,
+    eligibility_type: "public",
+    source_label: "Source officielle",
+    last_seen_at: nowISO(),
+    created_at: nowISO(),
+    updated_at: nowISO(),
+  },
+  {
+    offer_id: uid(),
+    country: "SN",
+    operator: "Orange",
+    name: "Pass Semaine 2Go",
+    price_fcfa: 1000,
+    type_usage: "data",
+    data_mb: mbFromGo(2),
+    minutes: null,
+    sms: null,
+    validity_days: 7,
+    ussd_code: "*1234#",
+    activation_path: "*1234# > Internet > Semaine > 2Go",
+    status: "active",
+    confidence_score: 77,
+    is_verified: false,
+    is_promo: false,
+    eligibility_type: "public",
+    source_label: "Source officielle",
+    last_seen_at: nowISO(),
+    created_at: nowISO(),
+    updated_at: nowISO(),
+  },
+  {
+    offer_id: uid(),
+    country: "SN",
+    operator: "Orange",
+    name: "Pass Semaine 10Go",
+    price_fcfa: 2500,
+    type_usage: "data",
+    data_mb: mbFromGo(10),
+    minutes: null,
+    sms: null,
+    validity_days: 7,
+    ussd_code: "*1234#",
+    activation_path: "*1234# > Internet > Semaine > 10Go",
+    status: "active",
+    confidence_score: 79,
+    is_verified: false,
+    is_promo: false,
+    eligibility_type: "public",
+    source_label: "Source officielle",
+    last_seen_at: nowISO(),
+    created_at: nowISO(),
+    updated_at: nowISO(),
+  },
+
+  // Offres sous conditions / special (ne doivent pas être #1)
+  {
+    offer_id: uid(),
+    country: "SN",
+    operator: "Orange",
+    name: "Pass Éducation 1Go",
+    price_fcfa: 100,
+    type_usage: "data",
+    data_mb: mbFromGo(1),
+    minutes: null,
+    sms: null,
+    validity_days: 7,
+    ussd_code: "*1234#",
+    activation_path: "*1234# > Internet > Semaine > Éducation",
+    status: "active",
+    confidence_score: 70,
+    is_verified: false,
+    is_promo: false,
+    eligibility_type: "student",
+    source_label: "Source officielle",
+    last_seen_at: nowISO(),
+    created_at: nowISO(),
+    updated_at: nowISO(),
+  },
+  {
+    offer_id: uid(),
+    country: "SN",
+    operator: "Orange",
+    name: "Promo 10Go à 2000F (OM)",
+    price_fcfa: 2000,
+    type_usage: "data",
+    data_mb: mbFromGo(10),
+    minutes: null,
+    sms: null,
+    validity_days: 30,
+    ussd_code: "*1234#",
+    activation_path: "*1234# > Internet > Mois > Promo OM",
+    status: "active",
+    confidence_score: 72,
+    is_verified: false,
+    is_promo: true,
+    eligibility_type: "special",
+    source_label: "Source officielle",
+    last_seen_at: nowISO(),
+    created_at: nowISO(),
+    updated_at: nowISO(),
+  },
+];
+
+const STORE_KEY = "doylu_offers_v1";
+const META_KEY = "doylu_meta_v1";
+const ADMIN_SESSION_KEY = "doylu_admin_ok";
+
+// ---------- App state ----------
+const state = {
+  budget: 1000,
+  usage: "data", // data | mixte | appels
+  validity: "all", // all | 1 | 7 | 30
+  operator: "all", // all | Orange | Free | Expresso | Lebara
+  view: "home",
+};
+
+// ---------- DOM ----------
+const $ = (id) => document.getElementById(id);
+
+const offersGrid = $("offersGrid");
+const promosGrid = $("promosGrid");
+
+const budgetInput = $("budgetInput");
+const searchBtn = $("searchBtn");
+const searchBtnText = $("searchBtnText");
+const budgetHint = $("budgetHint");
+const lastUpdate = $("lastUpdate");
+
+const bestBanner = $("bestBanner");
+const bestTitle = $("bestTitle");
+const bestGain = $("bestGain");
+const bestHint = $("bestHint");
+
+const resultsHead = $("resultsHead");
+const resultsCount = $("resultsCount");
+const emptyState = $("emptyState");
+
+const toast = $("toast");
+
+const modal = $("modal");
+const modalTitle = $("modalTitle");
+const modalBody = $("modalBody");
+const modalClose = $("modalClose");
+
+const hamburger = $("hamburger");
+const nav = $("nav");
+
+// Admin dom
+const adminLogin = $("adminLogin");
+const adminPanel = $("adminPanel");
+const adminPass = $("adminPass");
+const adminLoginBtn = $("adminLoginBtn");
+const adminCount = $("adminCount");
+const adminList = $("adminList");
+const exportJsonBtn = $("exportJsonBtn");
+const importJsonInput = $("importJsonInput");
+const resetBtn = $("resetBtn");
+
+const saveOfferBtn = $("saveOfferBtn");
+const clearFormBtn = $("clearFormBtn");
+
+// Contact
+const reportSend = $("reportSend");
+const smsSend = $("smsSend");
+const bizMail = $("bizMail");
+const bizWA = $("bizWA");
+
+// ---------- Load / save offers ----------
+function loadOffers() {
+  const existing = getStore(STORE_KEY);
+  if (Array.isArray(existing) && existing.length) return existing;
+  setStore(STORE_KEY, DEFAULT_OFFERS);
+  setStore(META_KEY, { last_update: nowISO() });
+  return DEFAULT_OFFERS.slice();
 }
 
-function eligibilityBadge(o) {
-  const t = (o.eligibility_type || "public");
-  if (t === "student") return { label: "🎓 Réservé aux étudiants", cls: "elig-student", note: "Peut nécessiter un justificatif selon l’opérateur." };
-  if (t === "corporate") return { label: "🔒 Sous conditions opérateur", cls: "elig-corp", note: "Peut nécessiter un justificatif selon l’opérateur." };
-  if (t === "special") return { label: "✨ Offre spéciale", cls: "elig-special", note: "Peut nécessiter des conditions selon l’opérateur." };
-  return null;
+function saveOffers(offers) {
+  setStore(STORE_KEY, offers);
+  const meta = getStore(META_KEY) || {};
+  meta.last_update = nowISO();
+  setStore(META_KEY, meta);
 }
 
-function oneBadge(o) {
-  const elig = eligibilityBadge(o);
-  if (elig) return { cls: elig.cls, label: elig.label };
-  if (o.promo_limited) return { cls: "promo", label: "Promo limitée" };
-  return { cls: "official", label: "Source officielle" };
+function getMeta() {
+  return getStore(META_KEY) || { last_update: null };
 }
 
-/* ===================== UI ===================== */
+let offers = loadOffers();
 
-function toggleLoader(on, text = "Recherche en cours…") {
-  const loader = $("loader");
-  if (!loader) return;
-  $("loaderText").textContent = text;
-  loader.style.display = on ? "flex" : "none";
+// ---------- Utilities ----------
+function formatMoney(x) {
+  return `${x} FCFA`;
 }
 
-function setLastUpdate() {
-  const el = $("lastUpdate");
-  if (!el) return;
-  el.textContent = `aujourd’hui ${nowHHmm()}`;
+function formatValidity(days) {
+  if (!days) return "Inconnu";
+  if (days === 1) return "24h";
+  return `${days} jours`;
+}
+
+function formatDataMB(mb) {
+  if (!mb || !Number.isFinite(mb)) return "Inconnu";
+  if (mb >= 1024) return `${(mb / 1024).toFixed(1).replace(".0", "")} Go`;
+  return `${Math.round(mb)} Mo`;
 }
 
 function showToast(msg) {
-  const t = $("toast");
-  if (!t) return;
-  t.textContent = msg;
-  t.style.display = "block";
-  clearTimeout(window.__toastTimer);
-  window.__toastTimer = setTimeout(() => t.style.display = "none", 2000);
+  toast.textContent = msg;
+  toast.hidden = false;
+  setTimeout(() => (toast.hidden = true), 1600);
 }
-
-async function copyText(text) {
-  try { await navigator.clipboard.writeText(text); return true; } catch { return false; }
-}
-
-function shareWhatsApp(title, price, ussd) {
-  const msg = `Bon plan Doylu 🇸🇳\n${title}\nPrix: ${price} FCFA\nCode: ${ussd}\n`;
-  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
-}
-
-/* ===================== MODAL ===================== */
 
 function openModal(title, html) {
-  $("modalTitle").textContent = title || "Info";
-  $("modalBody").innerHTML = html || "<p></p>";
-  $("modalBackdrop").style.display = "flex";
-}
-function closeModal() { $("modalBackdrop").style.display = "none"; }
-
-function openHowVerify() {
-  openModal("Comment on vérifie ?", `
-    <ul>
-      <li>On collecte des offres reçues par SMS et vues dans les menus USSD.</li>
-      <li>On vérifie prix / volume / validité, puis on retire les offres expirées.</li>
-      <li>“Source officielle” = preuve fiable (USSD / page officielle).</li>
-    </ul>
-  `);
+  modalTitle.textContent = title;
+  modalBody.innerHTML = html;
+  modal.showModal();
 }
 
-/* ===================== PAGES ===================== */
-
-const PAGES = ["home", "promos", "guide", "contact"];
-function currentPageFromHash() {
-  const h = (window.location.hash || "#home").replace("#", "");
-  if (h === "admin") return "home";
-  return PAGES.includes(h) ? h : "home";
-}
-function showPage(page) {
-  for (const p of PAGES) {
-    $("page_" + p)?.classList.toggle("hidden-page", p !== page);
-    $("nav_" + p)?.classList.toggle("active", p === page);
-    $("mnav_" + p)?.classList.toggle("active", p === page);
-  }
-}
-function toggleMobileMenu(forceClose = false) {
-  const menu = $("mobileMenu");
-  if (!menu) return;
-  if (forceClose) return menu.classList.add("hidden");
-  menu.classList.toggle("hidden");
+function closeModal() {
+  if (modal.open) modal.close();
 }
 
-/* ===================== FILTERS ===================== */
+modalClose.addEventListener("click", closeModal);
+modal.addEventListener("click", (e) => {
+  const rect = modal.getBoundingClientRect();
+  const inside =
+    rect.top <= e.clientY &&
+    e.clientY <= rect.bottom &&
+    rect.left <= e.clientX &&
+    e.clientX <= rect.right;
+  if (!inside) closeModal();
+});
 
-function passesOperator(o) {
-  if (selectedOperator === "any") return true;
-  return o.operator === selectedOperator;
-}
-
-function passesValidity(o) {
-  if (selectedValidity === "any") return true;
-  const v = Number(selectedValidity);
-  const d = Number(o.validity_days || 0);
-  if (!d) return false;
-  if (v === 1) return d <= 1;
-  return d >= v;
-}
-
-function offerIsDisplayable(o, budget) {
-  if (o.hidden) return false;
-  if (o.status === "expired") return false;
-  if (!budget) return false;
-  if (Number(o.price_fcfa) > Number(budget)) return false;
-  if (o.type_usage !== selectedUsage) return false;
-  if (!passesValidity(o)) return false;
-  if (!passesOperator(o)) return false;
-  return true;
-}
-
-function computeResults() {
-  const budget = Number(selectedBudget || 0);
-
-  const filtered = OFFERS
-    .filter(o => offerIsDisplayable(o, budget))
-    .map(o => ({ ...o, _score: offerScore(o, selectedUsage) }));
-
-  const publicRows = filtered.filter(o => (o.eligibility_type || "public") === "public");
-  const specialRows = filtered.filter(o => (o.eligibility_type || "public") !== "public");
-
-  publicRows.sort((a, b) => b._score - a._score);
-  specialRows.sort((a, b) => b._score - a._score);
-
-  return { publicRows, specialRows, allRows: [...publicRows, ...specialRows] };
-}
-
-/* ===================== GAIN (PUBLIC ONLY) ===================== */
-
-function formatDeltaFromMb(deltaMb) {
-  const mb = Number(deltaMb || 0);
-  if (!(mb > 0)) return null;
-
-  if (mb < 1024) {
-    const roundedMb = Math.round(mb / 50) * 50;
-    if (!(roundedMb > 0)) return null;
-    return `+${roundedMb} Mo de plus que l’offre publique suivante`;
-  }
-
-  const go = mb / 1024;
-  const roundedGo = Math.round(go / 0.5) * 0.5;
-  if (!(roundedGo > 0)) return null;
-
-  const label = Number.isInteger(roundedGo) ? String(roundedGo) : String(roundedGo).replace(".", ",");
-  return `+${label} Go de plus que l’offre publique suivante`;
-}
-
-function calcPublicGainLine(bestPublic, secondPublic) {
-  if (!bestPublic || !secondPublic) return null;
-  if (selectedUsage !== "data") return null;
-  if (!bestPublic.data_mb || !secondPublic.data_mb) return null;
-
-  const deltaMb = Number(bestPublic.data_mb) - Number(secondPublic.data_mb);
-  return formatDeltaFromMb(deltaMb);
-}
-
-/* ===================== SIMPLE RECO ===================== */
-
-function buildSimpleReco(o) {
-  if (!o) return null;
-  const d = Number(o.validity_days || 0);
-  const mb = Number(o.data_mb || 0);
-
-  if (selectedUsage === "data") {
-    if (d >= 30) return "Bon pour le mois";
-    if (d >= 7) return "Bon pour 7 jours";
-    if (d === 1 && mb >= 5120) return "Bon pour 24h intensif";
-    if (d === 1) return "Idéal pour la journée";
-    return "Convient pour réseaux sociaux";
-  }
-  if (selectedUsage === "appels") {
-    if (d >= 30) return "Bon pour le mois (appels)";
-    if (d >= 7) return "Bon pour la semaine (appels)";
-    if (d === 1) return "Pratique pour aujourd’hui";
-    return "Bon plan appels";
-  }
-  if (d >= 30) return "Bon pour le mois (mixte)";
-  if (d >= 7) return "Bon pour 7 jours (mixte)";
-  if (d === 1) return "Pour usage quotidien";
-  return "Bon plan mixte";
-}
-
-/* ===================== RENDER ===================== */
-
-function renderBestPick(bestPublic, publicRows, totalCount) {
-  const el = $("bestPick");
-  if (!el) return;
-
-  if (!bestPublic) {
-    el.style.display = "none";
-    el.innerHTML = "";
-    return;
-  }
-
-  const title = `${bestPublic.operator} — ${bestPublic.name}`;
-  const gain = publicRows.length >= 2 ? calcPublicGainLine(publicRows[0], publicRows[1]) : null;
-  const reco = buildSimpleReco(bestPublic);
-
-  el.style.display = "block";
-  el.innerHTML = `
-    <div class="best-card">
-      <div class="best-title">🔥 Meilleure valeur pour ${formatMoney(selectedBudget)} FCFA (${escapeHtml(selectedUsage)})</div>
-
-      ${gain ? `
-        <div class="best-benefit" role="note" aria-label="Gain">
-          <span class="spark">✨</span>
-          <span class="benefit-text">${escapeHtml(gain)}</span>
-        </div>
-      ` : ""}
-
-      ${reco ? `
-        <div class="best-reco" role="note" aria-label="Recommandation">
-          <span class="spark">✅</span>
-          <span class="reco-text">${escapeHtml(reco)}</span>
-        </div>
-      ` : ""}
-
-      <div class="best-sub">
-        ${escapeHtml(title)} • ${escapeHtml(metaLine(bestPublic))} • <strong>${formatMoney(bestPublic.price_fcfa)} FCFA</strong> — ${totalCount} offre(s)
-      </div>
-    </div>
-  `;
-}
-
-function renderResults() {
-  const resultsEl = $("results");
-  const habitEl = $("habitMsg");
-  if (!resultsEl || !habitEl) return;
-
-  resultsEl.innerHTML = "";
-  $("bestPick").style.display = "none";
-  habitEl.style.display = "none";
-
-  if (!selectedBudget) return;
-
-  const { publicRows, allRows } = computeResults();
-
-  if (allRows.length === 0) {
-    resultsEl.innerHTML = `
-      <div class="offer-card">
-        <div class="offer-title">Aucune offre trouvée</div>
-        <div class="meta-line">Essaie un autre budget, une autre validité ou un opérateur.</div>
-      </div>
-    `;
-    habitEl.style.display = "block";
-    return;
-  }
-
-  const bestPublic = publicRows.length ? publicRows[0] : null;
-  renderBestPick(bestPublic, publicRows, allRows.length);
-
-  const bestPublicId = bestPublic ? bestPublic.offer_id : null;
-
-  resultsEl.innerHTML = allRows.map(o => {
-    const badge = oneBadge(o);
-    const title = `${o.operator} — ${o.name}`;
-    const ussd = o.ussd_code || "USSD indisponible";
-    const isTop = (bestPublicId && o.offer_id === bestPublicId);
-    const elig = eligibilityBadge(o);
-
-    return `
-      <div class="offer-card ${isTop ? "top-choice" : ""}">
-        ${isTop ? `<div class="ribbon">🏆 TOP CHOIX</div>` : ""}
-
-        <div class="top-row">
-          <div class="operator">
-            <div class="op-logo">${escapeHtml(operatorCode(o.operator))}</div>
-            <div class="bold">${escapeHtml(o.operator)}</div>
-          </div>
-          <span class="badge ${badge.cls}">${escapeHtml(badge.label)}</span>
-        </div>
-
-        <div class="offer-title">${escapeHtml(title)}</div>
-        <div class="price">${formatMoney(o.price_fcfa)} FCFA</div>
-        <div class="meta-line">${escapeHtml(metaLine(o))}</div>
-
-        ${elig?.note ? `<div class="elig-note">${escapeHtml(elig.note)}</div>` : ""}
-
-        <button class="btn cta" id="reveal_${o.offer_id}" type="button">👁️ Afficher le code</button>
-        <div class="ussd-box" id="ussd_${o.offer_id}">${escapeHtml(ussd)}</div>
-
-        <div class="row-actions">
-          <button class="btn gray" id="copy_${o.offer_id}" type="button" style="display:none">📋 Copier</button>
-          <button class="btn share" id="share_${o.offer_id}" type="button">🟢 Partager WhatsApp</button>
-        </div>
-      </div>
-    `;
-  }).join("");
-
-  for (const o of allRows) {
-    const title = `${o.operator} — ${o.name}`;
-    const ussd = o.ussd_code || "USSD indisponible";
-
-    document.getElementById(`reveal_${o.offer_id}`)?.addEventListener("click", () => {
-      const box = document.getElementById(`ussd_${o.offer_id}`);
-      const copyBtn = document.getElementById(`copy_${o.offer_id}`);
-      if (box) box.style.display = "block";
-      if (copyBtn) copyBtn.style.display = "inline-flex";
-    });
-
-    document.getElementById(`copy_${o.offer_id}`)?.addEventListener("click", async () => {
-      const ok = await copyText(ussd);
-      if (!ok) return showToast("Copie impossible sur ce navigateur.");
-      showToast("Code copié ✅");
-    });
-
-    document.getElementById(`share_${o.offer_id}`)?.addEventListener("click", () => {
-      shareWhatsApp(title, Number(o.price_fcfa), ussd);
-    });
-  }
-
-  habitEl.style.display = "block";
-}
-
-/* ===================== BUDGET BUTTONS ===================== */
-
-function renderBudgets() {
-  const main = [500, 1000, 2000, 3000, 5000];
-  const grid = $("budgetGrid");
-  if (!grid) return;
-
-  grid.innerHTML = main
-    .map(b => `<button class="budget-btn" type="button" data-b="${b}">${formatMoney(b)}</button>`)
-    .join("");
-
-  document.querySelectorAll(".budget-btn[data-b]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const b = Number(btn.dataset.b);
-      $("budgetInput").value = String(b);
-      setBudget(b, true);
-    });
+// ---------- Navigation / Views ----------
+function setActiveNav(view) {
+  document.querySelectorAll(".nav__link").forEach((a) => {
+    a.classList.toggle("active", a.dataset.route === view);
   });
 }
 
-function setBudget(b, autoscroll) {
-  selectedBudget = Number(b);
-  document.querySelectorAll(".budget-btn[data-b]").forEach(x => x.classList.toggle("active", Number(x.dataset.b) === selectedBudget));
+function showView(view) {
+  state.view = view;
+  document.querySelectorAll(".view").forEach((v) => {
+    const isTarget = v.dataset.view === view;
+    v.hidden = !isTarget;
+    v.setAttribute("aria-hidden", String(!isTarget));
+  });
 
-  toggleLoader(true, "Recherche en cours…");
-  setTimeout(() => {
-    toggleLoader(false);
-    renderResults();
-    if (autoscroll) $("bestPick")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, 350);
-}
-
-/* ===================== PROMOS ===================== */
-
-function renderPromos() {
-  const el = $("promoResults");
-  if (!el) return;
-
-  const promos = OFFERS
-    .filter(o => !o.hidden && o.status !== "expired")
-    .filter(o => o.promo_limited)
-    .slice(0, 50);
-
-  if (promos.length === 0) {
-    el.innerHTML = `
-      <div class="offer-card">
-        <div class="offer-title">Pas de promos publiées pour l’instant</div>
-        <div class="meta-line">Ajoute une promo via Admin (#admin).</div>
-      </div>
-    `;
-    return;
+  setActiveNav(view === "admin" ? "home" : view);
+  if (hamburger && nav) {
+    nav.classList.remove("open");
+    hamburger.setAttribute("aria-expanded", "false");
   }
 
-  el.innerHTML = promos.map(o => {
-    const badge = oneBadge(o);
-    const title = `${o.operator} — ${o.name}`;
-    const ussd = o.ussd_code || "USSD indisponible";
-    const elig = eligibilityBadge(o);
-
-    return `
-      <div class="offer-card">
-        <div class="top-row">
-          <div class="operator">
-            <div class="op-logo">${escapeHtml(operatorCode(o.operator))}</div>
-            <div class="bold">${escapeHtml(o.operator)}</div>
-          </div>
-          <span class="badge ${badge.cls}">${escapeHtml(badge.label)}</span>
-        </div>
-
-        <div class="offer-title">${escapeHtml(title)}</div>
-        <div class="price">${formatMoney(o.price_fcfa)} FCFA</div>
-        <div class="meta-line">${escapeHtml(metaLine(o))}</div>
-
-        ${elig?.note ? `<div class="elig-note">${escapeHtml(elig.note)}</div>` : ""}
-
-        <button class="btn cta" id="reveal_${o.offer_id}" type="button">👁️ Afficher le code</button>
-        <div class="ussd-box" id="ussd_${o.offer_id}">${escapeHtml(ussd)}</div>
-
-        <div class="row-actions">
-          <button class="btn gray" id="copy_${o.offer_id}" type="button" style="display:none">📋 Copier</button>
-          <button class="btn share" id="share_${o.offer_id}" type="button">🟢 Partager WhatsApp</button>
-        </div>
-      </div>
-    `;
-  }).join("");
-
-  for (const o of promos) {
-    const title = `${o.operator} — ${o.name}`;
-    const ussd = o.ussd_code || "USSD indisponible";
-
-    document.getElementById(`reveal_${o.offer_id}`)?.addEventListener("click", () => {
-      const box = document.getElementById(`ussd_${o.offer_id}`);
-      const copyBtn = document.getElementById(`copy_${o.offer_id}`);
-      if (box) box.style.display = "block";
-      if (copyBtn) copyBtn.style.display = "inline-flex";
-    });
-
-    document.getElementById(`copy_${o.offer_id}`)?.addEventListener("click", async () => {
-      const ok = await copyText(ussd);
-      if (!ok) return showToast("Copie impossible sur ce navigateur.");
-      showToast("Code copié ✅");
-    });
-
-    document.getElementById(`share_${o.offer_id}`)?.addEventListener("click", () => {
-      shareWhatsApp(title, Number(o.price_fcfa), ussd);
-    });
-  }
+  if (view === "admin") initAdminUI();
+  if (view === "promos") renderPromos();
 }
 
-/* ===================== ADMIN ===================== */
-
-function renderAdmin() {
-  const list = $("adminList");
-  if (!list) return;
-
-  list.innerHTML = OFFERS.map(o => `
-    <div class="admin-item">
-      <div class="bold">${escapeHtml(o.operator)} — ${escapeHtml(o.name)}</div>
-      <div class="muted">ID: ${escapeHtml(o.offer_id)}</div>
-      <div class="hr"></div>
-
-      <select data-offer="${o.offer_id}" data-field="operator">
-        <option ${o.operator === "Orange" ? "selected" : ""}>Orange</option>
-        <option ${o.operator === "Free" ? "selected" : ""}>Free</option>
-        <option ${o.operator === "Expresso" ? "selected" : ""}>Expresso</option>
-        <option ${o.operator === "Lebara" ? "selected" : ""}>Lebara</option>
-      </select>
-
-      <input data-offer="${o.offer_id}" data-field="name" value="${escapeHtml(o.name)}" />
-      <input data-offer="${o.offer_id}" data-field="price_fcfa" type="number" value="${Number(o.price_fcfa)}" />
-
-      <select data-offer="${o.offer_id}" data-field="type_usage">
-        <option value="data" ${o.type_usage === "data" ? "selected" : ""}>data</option>
-        <option value="mixte" ${o.type_usage === "mixte" ? "selected" : ""}>mixte</option>
-        <option value="appels" ${o.type_usage === "appels" ? "selected" : ""}>appels</option>
-      </select>
-
-      <select data-offer="${o.offer_id}" data-field="eligibility_type">
-        <option value="public" ${o.eligibility_type === "public" ? "selected" : ""}>public</option>
-        <option value="student" ${o.eligibility_type === "student" ? "selected" : ""}>student</option>
-        <option value="corporate" ${o.eligibility_type === "corporate" ? "selected" : ""}>corporate</option>
-        <option value="special" ${o.eligibility_type === "special" ? "selected" : ""}>special</option>
-      </select>
-
-      <input data-offer="${o.offer_id}" data-field="data_mb" type="number" value="${o.data_mb ?? ""}" placeholder="data_mb (ex 5120)" />
-      <input data-offer="${o.offer_id}" data-field="minutes" type="number" value="${o.minutes ?? ""}" placeholder="minutes" />
-      <input data-offer="${o.offer_id}" data-field="validity_days" type="number" value="${o.validity_days ?? ""}" placeholder="validity_days (ex: 1, 7, 30)" />
-      <input data-offer="${o.offer_id}" data-field="ussd_code" value="${escapeHtml(o.ussd_code ?? "")}" placeholder="ussd_code" />
-
-      <div class="admin-row">
-        <label><input data-offer="${o.offer_id}" data-field="hidden" type="checkbox" ${o.hidden ? "checked" : ""}/> hidden</label>
-        <label><input data-offer="${o.offer_id}" data-field="promo_limited" type="checkbox" ${o.promo_limited ? "checked" : ""}/> promo</label>
-      </div>
-    </div>
-  `).join("");
-
-  list.querySelectorAll("input,select").forEach(el => {
-    el.addEventListener("change", () => {
-      const offerId = el.getAttribute("data-offer");
-      const field = el.getAttribute("data-field");
-      const offer = OFFERS.find(x => x.offer_id === offerId);
-      if (!offer) return;
-
-      let v = (el.type === "checkbox") ? el.checked : el.value;
-      if (["price_fcfa", "data_mb", "minutes", "validity_days"].includes(field)) v = v === "" ? null : Number(v);
-
-      offer[field] = v;
-      if (field === "name" || field === "promo_limited" || field === "eligibility_type") normalizeEligibilityFromName(offer);
-
-      offer.updated_at = isoNow();
-      BUNDLE.offers = OFFERS;
-      BUNDLE.sources = SOURCES;
-      persistBundle();
-
-      renderPromos();
-      if (selectedBudget) renderResults();
-    });
-  });
-}
-
-function adminImportFile(file) {
-  const r = new FileReader();
-  r.onload = () => {
-    try {
-      const b = JSON.parse(String(r.result || "{}"));
-      if (!Array.isArray(b.offers) || !Array.isArray(b.sources)) return alert("Format invalide.");
-      BUNDLE.offers = b.offers;
-      BUNDLE.sources = b.sources;
-      persistBundle();
-      syncFromBundle();
-      renderAdmin();
-      renderPromos();
-      if (selectedBudget) renderResults();
-      showToast("Import OK ✅");
-    } catch {
-      alert("Fichier JSON invalide.");
-    }
-  };
-  r.readAsText(file);
-}
-
-function openPasteImportModal() {
-  openModal("Coller JSON", `
-    <p class="muted">Colle un JSON au format <strong>{ "offers": [...], "sources": [...] }</strong></p>
-    <textarea id="pasteJson" style="width:100%;min-height:220px;padding:12px;border-radius:14px;border:1px solid #e5e7eb;font-weight:900;font-size:13px"></textarea>
-    <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
-      <button class="btn cta" type="button" id="pasteImportConfirm">Importer</button>
-      <button class="btn gray" type="button" id="pasteImportCancel">Annuler</button>
-    </div>
-  `);
-  document.getElementById("pasteImportCancel")?.addEventListener("click", closeModal);
-  document.getElementById("pasteImportConfirm")?.addEventListener("click", () => {
-    const raw = String(document.getElementById("pasteJson")?.value || "").trim();
-    if (!raw) return alert("Colle le JSON d'abord.");
-    try {
-      const b = JSON.parse(raw);
-      if (!Array.isArray(b.offers) || !Array.isArray(b.sources)) return alert("Format invalide.");
-      BUNDLE.offers = b.offers;
-      BUNDLE.sources = b.sources;
-      persistBundle();
-      syncFromBundle();
-      renderAdmin();
-      renderPromos();
-      if (selectedBudget) renderResults();
-      closeModal();
-      showToast("Import OK ✅");
-    } catch {
-      alert("JSON illisible.");
-    }
-  });
-}
-
-function openAdminIfAllowed() {
-  if (prompt("Mot de passe admin ?") !== ADMIN_PASSWORD) {
-    window.location.hash = "#home";
-    return false;
-  }
-  $("adminPanel").style.display = "block";
-  $("adminPanel").setAttribute("aria-hidden", "false");
-  renderAdmin();
-  return true;
-}
-function closeAdmin() {
-  $("adminPanel").style.display = "none";
-  $("adminPanel").setAttribute("aria-hidden", "true");
-}
-function handleAdminRoute() {
-  if (window.location.hash === "#admin") openAdminIfAllowed();
-  else closeAdmin();
-}
-
-/* ===================== EVENTS ===================== */
-
-function bindEvents() {
-  $("brandBtn")?.addEventListener("click", () => window.location.hash = "#home");
-  $("hamburgerBtn")?.addEventListener("click", () => toggleMobileMenu());
-
-  ["home", "promos", "guide", "contact"].forEach(p =>
-    $("mnav_" + p)?.addEventListener("click", () => toggleMobileMenu(true))
-  );
-
-  $("howVerifyLink")?.addEventListener("click", (e) => { e.preventDefault(); openHowVerify(); });
-  $("howVerifyBtn2")?.addEventListener("click", openHowVerify);
-
-  $("modalBackdrop")?.addEventListener("click", (e) => { if (e.target?.id === "modalBackdrop") closeModal(); });
-  $("modalCloseBtn")?.addEventListener("click", closeModal);
-
-  $("waOptIn")?.addEventListener("click", () => {
-    window.open(`https://wa.me/?text=${encodeURIComponent("Salut ! Je veux recevoir les bons plans Doylu sur WhatsApp.")}`, "_blank");
-  });
-
-  document.querySelectorAll("[data-u]").forEach(btn => btn.addEventListener("click", () => {
-    selectedUsage = btn.getAttribute("data-u");
-    document.querySelectorAll("[data-u]").forEach(x => x.classList.remove("active"));
-    btn.classList.add("active");
-    if (selectedBudget) renderResults();
-  }));
-
-  document.querySelectorAll("[data-op]").forEach(btn => btn.addEventListener("click", () => {
-    selectedOperator = btn.getAttribute("data-op");
-    document.querySelectorAll("[data-op]").forEach(x => x.classList.remove("active"));
-    btn.classList.add("active");
-    if (selectedBudget) renderResults();
-  }));
-
-  document.querySelectorAll("[data-v]").forEach(btn => btn.addEventListener("click", () => {
-    selectedValidity = btn.getAttribute("data-v");
-    document.querySelectorAll("[data-v]").forEach(x => x.classList.remove("active"));
-    btn.classList.add("active");
-    if (selectedBudget) renderResults();
-  }));
-
-  $("findBtn")?.addEventListener("click", () => {
-    const b = Number($("budgetInput").value || 0);
-    if (!b) return;
-    setBudget(b, true);
-  });
-
-  $("budgetInput")?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      const b = Number($("budgetInput").value || 0);
-      if (!b) return;
-      setBudget(b, true);
-    }
-  });
-
-  $("adminRecomputeBtn")?.addEventListener("click", () => {
-    persistBundle();
-    syncFromBundle();
-    renderAdmin();
-    renderPromos();
-    if (selectedBudget) renderResults();
-    showToast("OK ✅");
-  });
-
-  $("adminExportBtn")?.addEventListener("click", () => {
-    const out = { offers: OFFERS, sources: SOURCES, exported_at: isoNow() };
-    const blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `doylu_export_${Date.now()}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-    showToast("Export ✅");
-  });
-
-  $("adminImportBtn")?.addEventListener("click", () => $("adminImportFile")?.click());
-  $("adminPasteBtn")?.addEventListener("click", openPasteImportModal);
-  $("adminImportFile")?.addEventListener("change", (e) => {
-    const f = e.target.files?.[0];
-    if (f) adminImportFile(f);
-  });
-
-  $("adminAddOfferBtn")?.addEventListener("click", () => {
-    const t = isoNow();
-    const id = `off_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
-    OFFERS.unshift({
-      offer_id: id,
-      operator: "Orange",
-      name: "Nouvelle offre",
-      price_fcfa: 0,
-      type_usage: selectedUsage || "data",
-      eligibility_type: "public",
-      data_mb: null,
-      minutes: null,
-      validity_days: null,
-      validity_type: "inconnu",
-      ussd_code: "#1234#",
-      activation_path: "#1234# > Achat pass internet",
-      status: "active",
-      promo_limited: false,
-      is_sponsored: false,
-      hidden: false,
-      updated_at: t,
-      created_at: t,
-      last_seen_at: t
-    });
-    BUNDLE.offers = OFFERS;
-    BUNDLE.sources = SOURCES;
-    persistBundle();
-    renderAdmin();
-    if (selectedBudget) renderResults();
-  });
-}
-
-/* ===================== PROMOS PAGE + ROUTE ===================== */
-
-function showPromosIfNeeded() {
-  if (currentPageFromHash() === "promos") renderPromos();
-}
-
-/* ===================== BOOT ===================== */
-
-function boot() {
-  loadBundle();
-  syncFromBundle();
-  bindEvents();
-  renderBudgets();
-  renderPromos();
-  setLastUpdate();
-  setInterval(setLastUpdate, 30_000);
-  showPage(currentPageFromHash());
-  handleAdminRoute();
-  showPromosIfNeeded();
+function routeFromHash() {
+  const hash = (window.location.hash || "#home").replace("#", "");
+  const allowed = new Set(["home", "promos", "guide", "contact", "admin"]);
+  return allowed.has(hash) ? hash : "home";
 }
 
 window.addEventListener("hashchange", () => {
-  showPage(currentPageFromHash());
-  showPromosIfNeeded();
-  handleAdminRoute();
+  showView(routeFromHash());
 });
 
-boot();
+hamburger?.addEventListener("click", () => {
+  const isOpen = nav.classList.toggle("open");
+  hamburger.setAttribute("aria-expanded", String(isOpen));
+});
+
+// ---------- Filters UI ----------
+function bindChipGroup(containerId, onPick) {
+  const el = $(containerId);
+  el.addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    onPick(btn);
+  });
+}
+
+function setChipActive(containerId, predicate) {
+  const el = $(containerId);
+  el.querySelectorAll(".chip").forEach((b) => b.classList.toggle("chip--active", predicate(b)));
+}
+
+bindChipGroup("budgetChips", (btn) => {
+  const b = Number(btn.dataset.budget);
+  if (!Number.isFinite(b)) return;
+  budgetInput.value = String(b);
+  state.budget = b;
+  runSearch(true);
+});
+
+bindChipGroup("usageChips", (btn) => {
+  state.usage = btn.dataset.usage;
+  setChipActive("usageChips", (b) => b.dataset.usage === state.usage);
+  runSearch(false);
+});
+
+bindChipGroup("validityChips", (btn) => {
+  state.validity = btn.dataset.validity;
+  setChipActive("validityChips", (b) => b.dataset.validity === state.validity);
+  runSearch(false);
+});
+
+bindChipGroup("operatorChips", (btn) => {
+  state.operator = btn.dataset.operator;
+  setChipActive("operatorChips", (b) => b.dataset.operator === state.operator);
+  runSearch(false);
+});
+
+bindChipGroup("promosOperatorChips", (btn) => {
+  setChipActive("promosOperatorChips", (b) => b.dataset.operator === btn.dataset.operator);
+  renderPromos();
+});
+bindChipGroup("promosUsageChips", (btn) => {
+  setChipActive("promosUsageChips", (b) => b.dataset.usage === btn.dataset.usage);
+  renderPromos();
+});
+
+// Empty suggestions
+emptyState.addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-suggest]");
+  const u = e.target.closest("button[data-suggest-usage]");
+  if (b) {
+    budgetInput.value = b.dataset.suggest;
+    state.budget = Number(b.dataset.suggest);
+    runSearch(true);
+  }
+  if (u) {
+    state.usage = u.dataset.suggestUsage;
+    setChipActive("usageChips", (x) => x.dataset.usage === state.usage);
+    runSearch(false);
+  }
+});
+
+// ---------- Trust / verify modal ----------
+function howVerifyHtml() {
+  return `
+    <ul>
+      <li>On collecte des offres via <strong>SMS</strong>, <strong>USSD</strong> et annonces publiques.</li>
+      <li>On vérifie la cohérence (prix, volume, validité) et on retire les offres expirées.</li>
+      <li>Le badge “Vérifié” apparaît quand l’offre est confirmée par plusieurs preuves récentes.</li>
+    </ul>
+  `;
+}
+$("howVerifyBtn").addEventListener("click", () => openModal("Comment on vérifie ?", howVerifyHtml()));
+$("howVerifyBtn2").addEventListener("click", () => openModal("Comment on vérifie ?", howVerifyHtml()));
+
+// ---------- WhatsApp setup ----------
+function waLink(text) {
+  const msg = encodeURIComponent(text);
+  return `https://wa.me/${WHATSAPP_NUMBER}?text=${msg}`;
+}
+$("waSubscribe").href = waLink("Salut ! Je veux recevoir les bons plans Doylu (1 message/jour max).");
+
+// ---------- Ranking / scoring ----------
+function valuePerFcfa(offer, usage) {
+  const price = offer.price_fcfa || 1;
+  if (usage === "data") return (offer.data_mb || 0) / price;
+  if (usage === "appels") return (offer.minutes || 0) / price;
+  // mixte: pondération simple V1
+  return ((offer.data_mb || 0) / price) * 0.7 + ((offer.minutes || 0) / price) * 0.3;
+}
+
+function bonusValidity(offer) {
+  const d = offer.validity_days || 0;
+  if (d >= 30) return 0.15;
+  if (d >= 7) return 0.08;
+  if (d >= 1) return 0.03;
+  return 0;
+}
+
+function bonusVerified(offer) {
+  return offer.is_verified ? 0.1 : 0;
+}
+
+function scoreOffer(offer, usage) {
+  return valuePerFcfa(offer, usage) + bonusValidity(offer) + bonusVerified(offer);
+}
+
+// Gain formatting rules (data): MB -> (Mo < 1Go rounded 50Mo) OR (Go >=1 rounded 0.5Go)
+function formatGainDataMB(diffMB) {
+  if (!Number.isFinite(diffMB) || diffMB <= 0) return null;
+  if (diffMB < 1024) {
+    const rounded = Math.round(diffMB / 50) * 50;
+    return `+${rounded} Mo`;
+  }
+  const go = diffMB / 1024;
+  const roundedGo = Math.round(go / 0.5) * 0.5;
+  const txt = String(roundedGo).endsWith(".0") ? String(roundedGo).slice(0, -2) : String(roundedGo);
+  return `+${txt} Go`;
+}
+
+// Hint simple V1 selon validité + volume
+function bestHintText(offer) {
+  const d = offer.validity_days || 0;
+  const mb = offer.data_mb || 0;
+  if (d === 1 && mb >= 3000) return "Bon pour 24h intensif.";
+  if (d === 1) return "Idéal pour la journée.";
+  if (d === 7) return "Bon pour 7 jours.";
+  if (d >= 30) return "Bon pour le mois.";
+  return "Bon plan à comparer.";
+}
+
+// Eligibility labels
+function eligibilityBadge(offer) {
+  if (offer.eligibility_type === "student") return { text: "🎓 Réservé aux étudiants", kind: "special" };
+  if (offer.eligibility_type === "corporate") return { text: "🔒 Offre corporate", kind: "special" };
+  if (offer.eligibility_type === "special") return { text: "🔒 Sous conditions", kind: "special" };
+  return null;
+}
+
+// ---------- Filtering ----------
+function matchesFilters(offer) {
+  if (offer.status !== "active") return false;
+  if (offer.price_fcfa > state.budget) return false;
+
+  if (state.operator !== "all" && offer.operator !== state.operator) return false;
+
+  if (state.usage && offer.type_usage !== state.usage) {
+    // Si mixte demandé, on garde mixte uniquement (V1 strict)
+    return false;
+  }
+
+  if (state.validity !== "all") {
+    const days = Number(state.validity);
+    if (!Number.isFinite(days)) return true;
+    if ((offer.validity_days || 0) !== days) return false;
+  }
+
+  return true;
+}
+
+function splitPublicSpecial(list) {
+  const pub = [];
+  const special = [];
+  for (const o of list) {
+    if (!o.eligibility_type || o.eligibility_type === "public") pub.push(o);
+    else special.push(o);
+  }
+  return { pub, special };
+}
+
+// ---------- Rendering cards ----------
+function renderOfferCard(offer, opts = {}) {
+  const opLetter = (offer.operator || "?").slice(0, 1).toUpperCase();
+  const dataLine = offer.type_usage === "data" ? `📱 ${formatDataMB(offer.data_mb)}` : "";
+  const minLine = offer.type_usage === "appels" ? `📞 ${offer.minutes ?? "—"} min` : "";
+  const mixLine =
+    offer.type_usage === "mixte"
+      ? `📱 ${formatDataMB(offer.data_mb)} • 📞 ${offer.minutes ?? "—"} min`
+      : "";
+  const validity = `⏱ ${formatValidity(offer.validity_days)}`;
+
+  const sourceText = offer.source_label || (offer.is_verified ? "Vérifié" : "Source");
+  const badge = eligibilityBadge(offer);
+
+  const topChoice = opts.isTopChoice
+    ? `<div class="topChoice"><span class="trophy">🏆</span> TOP CHOIX</div>`
+    : "";
+
+  const badgeHtml = badge ? `<span class="specialBadge">${badge.text}</span>` : "";
+  const promoHtml = offer.is_promo ? `<span class="specialBadge">Promo limitée</span>` : "";
+
+  const ussd = offer.ussd_code || "*1234#";
+  const cardId = offer.offer_id;
+
+  return `
+    <article class="card" data-offer-id="${cardId}">
+      ${topChoice}
+      <div class="cardTop">
+        <div style="display:flex;gap:10px;align-items:center">
+          <div class="opBadge">${opLetter}</div>
+          <div style="font-weight:950">${offer.operator}</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+          ${promoHtml}
+          ${badgeHtml}
+          <span class="sourceBadge">${sourceText}</span>
+        </div>
+      </div>
+
+      <div class="cardTitle">${offer.operator} — ${offer.name}</div>
+      <div class="price">${offer.price_fcfa} FCFA</div>
+
+      <div class="meta">
+        ${mixLine || dataLine || minLine} • ${validity}
+      </div>
+
+      <div class="actions">
+        <button class="btnWide" data-action="reveal">👁 Afficher le code</button>
+        <div class="ussd" see data-ussd>${ussd}</div>
+
+        <div class="rowBtns">
+          <button class="btn btnCopy" data-action="copy">📋 Copier</button>
+          <button class="btn btnShare" data-action="share">🟢 Partager WhatsApp</button>
+        </div>
+      </div>
+
+      ${
+        badge
+          ? `<div class="meta" style="margin-top:10px">Peut nécessiter un justificatif selon l’opérateur.</div>`
+          : ""
+      }
+    </article>
+  `;
+}
+
+// Offer actions (reveal/copy/share)
+function bindOfferActions(container) {
+  container.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    const card = e.target.closest(".card");
+    if (!card) return;
+
+    const offerId = card.dataset.offerId;
+    const offer = offers.find((o) => o.offer_id === offerId);
+    if (!offer) return;
+
+    const ussdBox = card.querySelector(".ussd");
+    const ussd = offer.ussd_code || "*1234#";
+
+    if (btn.dataset.action === "reveal") {
+      ussdBox.classList.toggle("show");
+      showToast("Code affiché ✅");
+      return;
+    }
+
+    if (btn.dataset.action === "copy") {
+      try {
+        await navigator.clipboard.writeText(ussd);
+        showToast("Code copié ✅");
+      } catch {
+        // fallback
+        const ta = document.createElement("textarea");
+        ta.value = ussd;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        ta.remove();
+        showToast("Code copié ✅");
+      }
+      return;
+    }
+
+    if (btn.dataset.action === "share") {
+      const msg = `Doylu: ${offer.operator} — ${offer.name}\nPrix: ${offer.price_fcfa} FCFA\nCode: ${ussd}\nValidité: ${formatValidity(
+        offer.validity_days
+      )}`;
+      window.open(waLink(msg), "_blank", "noreferrer");
+      return;
+    }
+  });
+}
+
+bindOfferActions(offersGrid);
+bindOfferActions(promosGrid);
+
+// ---------- Search ----------
+function setLastUpdateUI() {
+  const meta = getMeta();
+  if (!meta.last_update) {
+    lastUpdate.textContent = "—";
+    return;
+  }
+  const d = new Date(meta.last_update);
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  lastUpdate.textContent = `aujourd’hui ${hh}:${mm}`;
+}
+
+function setBudgetHint(count) {
+  budgetHint.textContent = `${count} offre(s) disponible(s)`;
+}
+
+function runSearch(scrollToResults) {
+  // keep budget state from input
+  const b = clampNum(budgetInput.value, state.budget);
+  state.budget = b;
+  budgetInput.value = String(b);
+
+  // set actives
+  setChipActive("usageChips", (x) => x.dataset.usage === state.usage);
+  setChipActive("validityChips", (x) => x.dataset.validity === state.validity);
+  setChipActive("operatorChips", (x) => x.dataset.operator === state.operator);
+
+  // loader micro feedback
+  searchBtnText.textContent = "Recherche…";
+  searchBtn.disabled = true;
+
+  setTimeout(() => {
+    const filtered = offers.filter(matchesFilters);
+    const { pub, special } = splitPublicSpecial(filtered);
+
+    // Score only public for top and gain
+    const pubSorted = pub
+      .slice()
+      .sort((a, b2) => scoreOffer(b2, state.usage) - scoreOffer(a, state.usage));
+
+    const specialSorted = special
+      .slice()
+      .sort((a, b2) => scoreOffer(b2, state.usage) - scoreOffer(a, state.usage));
+
+    const finalList = [...pubSorted, ...specialSorted];
+
+    // Update UI
+    setBudgetHint(finalList.length);
+    resultsHead.hidden = false;
+    resultsCount.textContent = `${finalList.length} offre(s) ≤ ${state.budget} FCFA`;
+
+    // best banner
+    renderBestBanner(pubSorted);
+
+    // list
+    if (!finalList.length) {
+      offersGrid.innerHTML = "";
+      emptyState.hidden = false;
+      bestBanner.hidden = true;
+    } else {
+      emptyState.hidden = true;
+      offersGrid.innerHTML = finalList
+        .map((o, idx) => renderOfferCard(o, { isTopChoice: idx === 0 && pubSorted[0]?.offer_id === o.offer_id }))
+        .join("");
+    }
+
+    if (scrollToResults) {
+      bestBanner.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    searchBtnText.textContent = "Voir les offres";
+    searchBtn.disabled = false;
+  }, 450);
+}
+
+function renderBestBanner(pubSorted) {
+  if (!pubSorted.length) {
+    bestBanner.hidden = true;
+    return;
+  }
+
+  const top = pubSorted[0];
+  const titleUsage = state.usage === "data" ? "data" : state.usage === "appels" ? "appels" : "mixte";
+
+  bestBanner.hidden = false;
+  bestTitle.textContent = `🔥 Meilleure valeur pour ${state.budget} FCFA (${titleUsage})`;
+
+  // Gain : uniquement sur PUBLIC, uniquement data si usage=data
+  bestGain.hidden = true;
+  bestGain.textContent = "";
+
+  if (state.usage === "data" && pubSorted.length >= 2) {
+    const second = pubSorted[1];
+    const diff = (top.data_mb || 0) - (second.data_mb || 0);
+    const g = formatGainDataMB(diff);
+    if (g) {
+      bestGain.hidden = false;
+      bestGain.textContent = `${g} de plus que l’offre publique suivante`;
+    }
+  }
+
+  bestHint.textContent = `${top.operator} — ${top.name} • 📱 ${formatDataMB(top.data_mb)} • ⏱ ${formatValidity(
+    top.validity_days
+  )} • ${top.price_fcfa} FCFA — ${pubSorted.length} offre(s) publique(s)`;
+}
+
+searchBtn.addEventListener("click", () => runSearch(true));
+budgetInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") runSearch(true);
+});
+
+// ---------- Promos page ----------
+function renderPromos() {
+  const opPick = document.querySelector("#promosOperatorChips .chip--active")?.dataset.operator || "all";
+  const usagePick = document.querySelector("#promosUsageChips .chip--active")?.dataset.usage || "all";
+
+  const list = offers
+    .filter((o) => o.status === "active" && o.is_promo)
+    .filter((o) => (opPick === "all" ? true : o.operator === opPick))
+    .filter((o) => (usagePick === "all" ? true : o.type_usage === usagePick))
+    .sort((a, b) => (b.confidence_score || 0) - (a.confidence_score || 0));
+
+  promosGrid.innerHTML = list.length
+    ? list.map((o) => renderOfferCard(o, { isTopChoice: false })).join("")
+    : `<div class="empty"><div class="empty__title">Pas de promos publiées pour l’instant.</div><div class="muted">Ajoute une promo via Admin (#admin).</div></div>`;
+}
+
+// ---------- Contact actions (WhatsApp V1) ----------
+function sendWA(text) {
+  window.open(waLink(text), "_blank", "noreferrer");
+}
+
+reportSend.addEventListener("click", () => {
+  const op = $("reportOperator").value;
+  const txt = $("reportText").value.trim();
+  if (!txt) return showToast("Écris un message d’abord.");
+  sendWA(`Doylu - Signalement offre\nOpérateur: ${op}\n\n${txt}`);
+});
+
+smsSend.addEventListener("click", () => {
+  const op = $("smsOperator").value;
+  const txt = $("smsText").value.trim();
+  if (!txt) return showToast("Colle le SMS d’abord.");
+  sendWA(`Doylu - Promo reçue par SMS\nOpérateur: ${op}\n\n${txt}`);
+});
+
+bizMail.addEventListener("click", () => {
+  window.location.href = `mailto:contact@doylu.sn?subject=${encodeURIComponent("Partenariat / Pub - Doylu")}`;
+});
+bizWA.addEventListener("click", () => sendWA("Doylu - Partenariat / Pub"));
+
+// ---------- Admin ----------
+function isAdminOK() {
+  return getStore(ADMIN_SESSION_KEY) === true;
+}
+
+function setAdminOK(v) {
+  setStore(ADMIN_SESSION_KEY, Boolean(v));
+}
+
+function initAdminUI() {
+  const ok = isAdminOK();
+  adminLogin.hidden = ok;
+  adminPanel.hidden = !ok;
+
+  if (ok) renderAdminList();
+}
+
+adminLoginBtn.addEventListener("click", () => {
+  const pass = adminPass.value.trim();
+  if (pass !== ADMIN_PASSWORD) return showToast("Mot de passe incorrect.");
+  setAdminOK(true);
+  adminPass.value = "";
+  initAdminUI();
+  showToast("Admin connecté ✅");
+});
+
+function readAdminForm() {
+  const operator = $("fOperator").value;
+  const name = $("fName").value.trim();
+  const price_fcfa = clampNum($("fPrice").value, null);
+  const type_usage = $("fUsage").value;
+
+  const data_mb = clampNum($("fData").value, null);
+  const minutes = clampNum($("fMinutes").value, null);
+  const validity_days = clampNum($("fValidity").value, null);
+
+  const ussd_code = $("fUssd").value.trim() || null;
+  const is_promo = $("fPromo").value === "true";
+  const eligibility_type = $("fEligibility").value;
+  const source_label =
+    $("fSource").value === "official"
+      ? "Source officielle"
+      : $("fSource").value === "sms"
+      ? "Source SMS"
+      : "Utilisateur";
+
+  if (!name || !price_fcfa || !Number.isFinite(price_fcfa)) return { error: "Nom + prix requis." };
+  if (type_usage === "data" && (data_mb == null || !Number.isFinite(data_mb))) {
+    return { error: "Pour une offre Data, renseigne Data (MB)." };
+  }
+
+  return {
+    offer: {
+      operator,
+      name,
+      price_fcfa,
+      type_usage,
+      data_mb: data_mb ?? null,
+      minutes: minutes ?? null,
+      sms: null,
+      validity_days: validity_days ?? null,
+      ussd_code,
+      activation_path: null,
+      status: "active",
+      confidence_score: 0,
+      is_verified: false,
+      is_promo,
+      eligibility_type,
+      source_label,
+      last_seen_at: nowISO(),
+      updated_at: nowISO(),
+    },
+  };
+}
+
+function clearAdminForm() {
+  $("fOperator").value = "Orange";
+  $("fName").value = "";
+  $("fPrice").value = "";
+  $("fUsage").value = "data";
+  $("fData").value = "";
+  $("fMinutes").value = "";
+  $("fValidity").value = "";
+  $("fUssd").value = "";
+  $("fPromo").value = "false";
+  $("fEligibility").value = "public";
+  $("fSource").value = "official";
+  delStore("doylu_editing_offer_id");
+}
+
+clearFormBtn.addEventListener("click", clearAdminForm);
+
+saveOfferBtn.addEventListener("click", () => {
+  const editingId = getStore("doylu_editing_offer_id");
+  const { offer, error } = readAdminForm();
+  if (error) return showToast(error);
+
+  if (editingId) {
+    offers = offers.map((o) => (o.offer_id === editingId ? { ...o, ...offer, offer_id: editingId } : o));
+    delStore("doylu_editing_offer_id");
+    showToast("Offre modifiée ✅");
+  } else {
+    offers = [
+      {
+        offer_id: uid(),
+        country: "SN",
+        created_at: nowISO(),
+        ...offer,
+      },
+      ...offers,
+    ];
+    showToast("Offre ajoutée ✅");
+  }
+
+  saveOffers(offers);
+  setLastUpdateUI();
+  renderAdminList();
+  runSearch(false);
+  clearAdminForm();
+});
+
+function renderAdminList() {
+  adminCount.textContent = String(offers.length);
+
+  const items = offers
+    .slice()
+    .sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""))
+    .map((o) => {
+      return `
+      <div class="adminItem" data-id="${o.offer_id}">
+        <div>
+          <strong>${o.operator}</strong> — ${o.name}
+          <div class="muted">${o.price_fcfa} FCFA • ${o.type_usage} • ${formatValidity(o.validity_days)} • ${
+        o.eligibility_type || "public"
+      } ${o.is_promo ? "• promo" : ""}</div>
+        </div>
+        <div class="adminItemBtns">
+          <button class="btn smallBtn" data-act="edit">Modifier</button>
+          <button class="btn smallBtn btn--danger" data-act="del">Supprimer</button>
+        </div>
+      </div>
+    `;
+    })
+    .join("");
+
+  adminList.innerHTML = items || `<div class="muted">Aucune offre.</div>`;
+}
+
+adminList.addEventListener("click", (e) => {
+  const row = e.target.closest(".adminItem");
+  const btn = e.target.closest("button[data-act]");
+  if (!row || !btn) return;
+
+  const id = row.dataset.id;
+  const act = btn.dataset.act;
+  const offer = offers.find((o) => o.offer_id === id);
+  if (!offer) return;
+
+  if (act === "del") {
+    offers = offers.filter((o) => o.offer_id !== id);
+    saveOffers(offers);
+    setLastUpdateUI();
+    renderAdminList();
+    runSearch(false);
+    showToast("Offre supprimée ✅");
+    return;
+  }
+
+  if (act === "edit") {
+    setStore("doylu_editing_offer_id", id);
+    $("fOperator").value = offer.operator;
+    $("fName").value = offer.name;
+    $("fPrice").value = String(offer.price_fcfa);
+    $("fUsage").value = offer.type_usage;
+    $("fData").value = offer.data_mb != null ? String(offer.data_mb) : "";
+    $("fMinutes").value = offer.minutes != null ? String(offer.minutes) : "";
+    $("fValidity").value = offer.validity_days != null ? String(offer.validity_days) : "";
+    $("fUssd").value = offer.ussd_code || "";
+    $("fPromo").value = offer.is_promo ? "true" : "false";
+    $("fEligibility").value = offer.eligibility_type || "public";
+    $("fSource").value =
+      offer.source_label === "Source SMS" ? "sms" : offer.source_label === "Utilisateur" ? "user" : "official";
+    showToast("Mode édition ✅");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+});
+
+// Export / import JSON
+exportJsonBtn.addEventListener("click", () => {
+  const payload = {
+    meta: getMeta(),
+    offers,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `doylu_offers_export_${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+
+importJsonInput.addEventListener("change", async (e) => {
+  const f = e.target.files?.[0];
+  if (!f) return;
+
+  try {
+    const text = await f.text();
+    const json = JSON.parse(text);
+
+    const incoming = Array.isArray(json) ? json : json.offers;
+    if (!Array.isArray(incoming)) throw new Error("JSON invalide (attendu: {offers:[...]}).");
+
+    // normalisation minimale
+    const normalized = incoming.map((o) => ({
+      offer_id: o.offer_id || uid(),
+      country: o.country || "SN",
+      operator: o.operator || "Orange",
+      name: o.name || "Offre",
+      price_fcfa: Number(o.price_fcfa || 0),
+      type_usage: o.type_usage || "data",
+      data_mb: o.data_mb != null ? Number(o.data_mb) : null,
+      minutes: o.minutes != null ? Number(o.minutes) : null,
+      sms: o.sms != null ? Number(o.sms) : null,
+      validity_days: o.validity_days != null ? Number(o.validity_days) : null,
+      ussd_code: o.ussd_code || null,
+      activation_path: o.activation_path || null,
+      status: o.status || "active",
+      confidence_score: Number(o.confidence_score || 0),
+      is_verified: Boolean(o.is_verified),
+      is_promo: Boolean(o.is_promo),
+      eligibility_type: o.eligibility_type || "public",
+      source_label: o.source_label || "Utilisateur",
+      last_seen_at: o.last_seen_at || nowISO(),
+      created_at: o.created_at || nowISO(),
+      updated_at: nowISO(),
+    }));
+
+    offers = normalized;
+    saveOffers(offers);
+    setLastUpdateUI();
+    renderAdminList();
+    runSearch(false);
+    showToast("Import OK ✅");
+  } catch (err) {
+    showToast(`Import KO: ${err.message}`);
+  } finally {
+    e.target.value = "";
+  }
+});
+
+resetBtn.addEventListener("click", () => {
+  offers = DEFAULT_OFFERS.slice();
+  saveOffers(offers);
+  setLastUpdateUI();
+  renderAdminList();
+  runSearch(false);
+  showToast("Reset OK ✅");
+});
+
+// ---------- Init ----------
+function init() {
+  // nav route
+  showView(routeFromHash());
+
+  // last update
+  setLastUpdateUI();
+
+  // default budget
+  budgetInput.value = String(state.budget);
+
+  // budget hint initial
+  setBudgetHint(offers.filter((o) => o.status === "active").length);
+
+  // initial render (home)
+  runSearch(false);
+}
+
+init();
