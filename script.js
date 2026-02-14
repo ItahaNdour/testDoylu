@@ -1,19 +1,7 @@
 "use strict";
 
-/**
- * DOYLU V1 - script.js
- * Fixes:
- * - Remove "Économie" line. Only show Gain (data) for PUBLIC offers.
- * - Add eligibility_type + automatic migration (education -> student, nuit/promo -> special).
- * - Best pick + gain computed ONLY on PUBLIC group.
- * - Remove "+" budgets UI (only 5 buttons shown).
- * - Force refresh by bumping storage key version.
- */
-
 const ADMIN_PASSWORD = "doyluadmin";
-
-// IMPORTANT: bump key to force refresh and avoid old cached data
-const STORAGE_KEY = "doylu_v1_bundle_v2";
+const STORAGE_KEY = "doylu_v1_bundle_v2"; // bump to avoid old cached logic
 
 function $(id) { return document.getElementById(id); }
 function pad2(n) { return String(n).padStart(2, "0"); }
@@ -49,7 +37,7 @@ let selectedUsage = "data";
 let selectedValidity = "any";
 let selectedOperator = "any";
 
-/* ===================== DATA MODEL ===================== */
+/* ===================== SEED OFFERS (Orange) ===================== */
 
 function mkOffer(
   offer_id,
@@ -92,21 +80,21 @@ function seedBundle() {
   const t = isoNow();
 
   const offers = [
-    // Orange - jour
+    // Jour
     mkOffer("off_orange_jour_300mo_200", "Orange", "Pass 300Mo", 200, "data", 300, null, 1, false, "public"),
     mkOffer("off_orange_jour_1_5go_500", "Orange", "Pass 1,5Go", 500, "data", 1536, null, 1, false, "public"),
     mkOffer("off_orange_jour_5go_1000", "Orange", "Pass 5Go", 1000, "data", 5120, null, 1, false, "public"),
 
-    // Orange - nuit (special)
+    // Nuit (special)
     mkOffer("off_orange_nuit_5go_500", "Orange", "Pass Nuit 5Go", 500, "data", 5120, null, 1, false, "special"),
 
-    // Orange - semaine
+    // Semaine
     mkOffer("off_orange_sem_edu_1go_100", "Orange", "Pass Éducation 1Go", 100, "data", 1024, null, 7, false, "student"),
     mkOffer("off_orange_sem_600mo_500", "Orange", "Pass 600Mo", 500, "data", 600, null, 7, false, "public"),
     mkOffer("off_orange_sem_2go_1000", "Orange", "Pass 2Go", 1000, "data", 2048, null, 7, false, "public"),
     mkOffer("off_orange_sem_10go_2500", "Orange", "Pass 10Go", 2500, "data", 10240, null, 7, false, "public"),
 
-    // Orange - mois
+    // Mois
     mkOffer("off_orange_mois_5go_2000", "Orange", "Pass 5Go (Max it)", 2000, "data", 5120, null, 30, false, "public"),
     mkOffer("off_orange_mois_promo_10go_2000", "Orange", "Promo 10Go (OM)", 2000, "data", 10240, null, 30, true, "special"),
     mkOffer("off_orange_mois_12go_3000", "Orange", "Pass 12Go", 3000, "data", 12288, null, 30, false, "public"),
@@ -153,19 +141,16 @@ function persistBundle() {
 function normalizeEligibilityFromName(o) {
   const name = String(o.name || "").toLowerCase();
 
-  // Do not override if already set
   if (o.eligibility_type && o.eligibility_type !== "public") return;
 
   if (name.includes("éducation") || name.includes("education") || name.includes("etudiant") || name.includes("étudiant")) {
     o.eligibility_type = "student";
     return;
   }
-
   if (name.includes("nuit") || name.includes("promo") || o.promo_limited) {
     o.eligibility_type = "special";
     return;
   }
-
   o.eligibility_type = o.eligibility_type || "public";
 }
 
@@ -173,13 +158,10 @@ function syncFromBundle() {
   OFFERS = Array.isArray(BUNDLE.offers) ? BUNDLE.offers : [];
   SOURCES = Array.isArray(BUNDLE.sources) ? BUNDLE.sources : [];
 
-  // MIGRATION: backfill eligibility_type and normalize from name
   for (const o of OFFERS) {
     if (!o.eligibility_type) o.eligibility_type = "public";
     normalizeEligibilityFromName(o);
   }
-
-  // Persist migration once so it becomes stable
   BUNDLE.offers = OFFERS;
   BUNDLE.sources = SOURCES;
   persistBundle();
@@ -421,7 +403,6 @@ function calcPublicGainLine(bestPublic, secondPublic) {
 
 function buildSimpleReco(o) {
   if (!o) return null;
-
   const d = Number(o.validity_days || 0);
   const mb = Number(o.data_mb || 0);
 
@@ -497,7 +478,7 @@ function renderResults() {
 
   if (!selectedBudget) return;
 
-  const { publicRows, specialRows, allRows } = computeResults();
+  const { publicRows, allRows } = computeResults();
 
   if (allRows.length === 0) {
     resultsEl.innerHTML = `
@@ -576,7 +557,7 @@ function renderResults() {
   habitEl.style.display = "block";
 }
 
-/* ===================== BUDGETS (NO "+") ===================== */
+/* ===================== BUDGET BUTTONS ===================== */
 
 function renderBudgets() {
   const main = [500, 1000, 2000, 3000, 5000];
@@ -599,11 +580,12 @@ function renderBudgets() {
 function setBudget(b, autoscroll) {
   selectedBudget = Number(b);
   document.querySelectorAll(".budget-btn[data-b]").forEach(x => x.classList.toggle("active", Number(x.dataset.b) === selectedBudget));
+
   toggleLoader(true, "Recherche en cours…");
   setTimeout(() => {
     toggleLoader(false);
     renderResults();
-    if (autoscroll) $("results")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (autoscroll) $("bestPick")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, 350);
 }
 
@@ -616,7 +598,7 @@ function renderPromos() {
   const promos = OFFERS
     .filter(o => !o.hidden && o.status !== "expired")
     .filter(o => o.promo_limited)
-    .slice(0, 30);
+    .slice(0, 50);
 
   if (promos.length === 0) {
     el.innerHTML = `
@@ -742,10 +724,7 @@ function renderAdmin() {
       if (["price_fcfa", "data_mb", "minutes", "validity_days"].includes(field)) v = v === "" ? null : Number(v);
 
       offer[field] = v;
-
-      if (field === "name" || field === "promo_limited" || field === "eligibility_type") {
-        normalizeEligibilityFromName(offer);
-      }
+      if (field === "name" || field === "promo_limited" || field === "eligibility_type") normalizeEligibilityFromName(offer);
 
       offer.updated_at = isoNow();
       BUNDLE.offers = OFFERS;
@@ -946,6 +925,12 @@ function bindEvents() {
   });
 }
 
+/* ===================== PROMOS PAGE + ROUTE ===================== */
+
+function showPromosIfNeeded() {
+  if (currentPageFromHash() === "promos") renderPromos();
+}
+
 /* ===================== BOOT ===================== */
 
 function boot() {
@@ -958,11 +943,12 @@ function boot() {
   setInterval(setLastUpdate, 30_000);
   showPage(currentPageFromHash());
   handleAdminRoute();
+  showPromosIfNeeded();
 }
 
 window.addEventListener("hashchange", () => {
   showPage(currentPageFromHash());
-  if (currentPageFromHash() === "promos") renderPromos();
+  showPromosIfNeeded();
   handleAdminRoute();
 });
 
