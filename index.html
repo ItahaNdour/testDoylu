@@ -1,13 +1,14 @@
-<!-- /index.html -->
+<!-- index.html -->
 <!doctype html>
 <html lang="fr">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Doylu — Comparateur de pass</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Doylu — Comparateur de pass (SN)</title>
     <link rel="stylesheet" href="./style.css" />
     <meta name="theme-color" content="#F6EFE6" />
   </head>
+
   <body>
     <header class="topbar">
       <div class="container topbar__inner">
@@ -23,9 +24,7 @@
           <a class="nav__link" href="#/contact" data-nav="contact">Contact</a>
         </nav>
 
-        <button class="burger" id="burgerBtn" aria-label="Menu" aria-expanded="false">
-          ☰
-        </button>
+        <button class="burger" id="burgerBtn" aria-label="Menu">☰</button>
       </div>
 
       <div class="mobileNav" id="mobileNav" hidden>
@@ -42,38 +41,35 @@
       <section id="page-accueil" class="page">
         <div class="hero">
           <h1 class="hero__title">Avant d’acheter ton pass, vérifie ici.</h1>
-          <p class="hero__subtitle">
-            Compare les offres selon ton budget. <strong>Données vérifiées</strong>, prêtes à copier.
-          </p>
+          <p class="hero__subtitle">Compare les offres selon ton budget. Données prêtes à copier.</p>
 
           <div class="panel">
-            <div class="panel__row panel__row--budget">
+            <div class="budgetRow">
               <div class="budgetInput">
                 <label class="label" for="budgetInput">💰 Ton budget (FCFA)</label>
                 <input
                   id="budgetInput"
-                  inputmode="numeric"
-                  pattern="[0-9]*"
                   type="number"
+                  inputmode="numeric"
                   min="0"
                   step="50"
                   placeholder="Ex: 1500"
                 />
               </div>
 
-              <button class="btn btn--primary" id="searchBtn">Voir les offres</button>
+              <button class="btn btn--primary" id="searchBtn" type="button">Voir les offres</button>
 
               <div class="budgetMeta">
-                <span class="muted" id="offersCount">0 offre(s) disponible(s)</span>
+                <span class="muted" id="offersCount">0 offre(s)</span>
               </div>
             </div>
 
             <div class="chips chips--budget" id="quickBudgets">
-              <button class="chip" data-budget="500">500</button>
-              <button class="chip" data-budget="1000">1000</button>
-              <button class="chip" data-budget="2000">2000</button>
-              <button class="chip" data-budget="3000">3000</button>
-              <button class="chip" data-budget="5000">5000</button>
+              <button class="chip" data-budget="500" type="button">500</button>
+              <button class="chip" data-budget="1000" type="button">1000</button>
+              <button class="chip" data-budget="2000" type="button">2000</button>
+              <button class="chip" data-budget="3000" type="button">3000</button>
+              <button class="chip" data-budget="5000" type="button">5000</button>
             </div>
 
             <div class="trustRow">
@@ -91,36 +87,38 @@
             <div class="filterCard">
               <div class="filterCard__title">🎯 Ton usage</div>
               <div class="chips" id="usageChips">
-                <button class="chip chip--active" data-usage="data">📱 Data</button>
-                <button class="chip" data-usage="mixte">🔄 Mixte</button>
-                <button class="chip" data-usage="appels">📞 Appels</button>
+                <button class="chip chip--active" data-usage="data" type="button">📱 Data</button>
+                <button class="chip" data-usage="mixte" type="button">🔄 Mixte</button>
+                <button class="chip" data-usage="appels" type="button">📞 Appels</button>
               </div>
             </div>
 
             <div class="filterCard">
               <div class="filterCard__title">📡 Opérateur</div>
               <div class="chips" id="operatorChips">
-                <button class="chip chip--active" data-operator="all">Tous</button>
-                <button class="chip" data-operator="Orange">Orange</button>
-                <button class="chip" data-operator="Free">Free</button>
-                <button class="chip" data-operator="Expresso">Expresso</button>
+                <button class="chip chip--active" data-operator="all" type="button">Tous</button>
+                <button class="chip" data-operator="Orange" type="button">Orange</button>
+                <button class="chip" data-operator="Free" type="button">Free</button>
+                <button class="chip" data-operator="Expresso" type="button">Expresso</button>
               </div>
             </div>
 
             <div class="filterCard">
               <div class="filterCard__title">⏱️ Validité</div>
               <div class="chips" id="validityChips">
-                <button class="chip chip--active" data-validity="all">Toutes</button>
-                <button class="chip" data-validity="24h">24h</button>
-                <button class="chip" data-validity="7j">7 jours</button>
-                <button class="chip" data-validity="30j">30 jours</button>
+                <button class="chip chip--active" data-validity="all" type="button">Toutes</button>
+                <button class="chip" data-validity="24h" type="button">24h</button>
+                <button class="chip" data-validity="7j" type="button">7 jours</button>
+                <button class="chip" data-validity="30j" type="button">30 jours</button>
               </div>
             </div>
 
             <div class="waCard">
               <div class="waCard__title">🟢 Recevoir les bons plans sur WhatsApp</div>
               <div class="waCard__subtitle">Gratuit. 1 message/jour max.</div>
-              <a class="btn btn--wa" id="waBtn" href="#" rel="noopener">Ouvrir WhatsApp</a>
+              <a class="btn btn--wa" id="waBtn" href="https://wa.me/?text=Doylu" target="_blank" rel="noopener"
+                >Ouvrir WhatsApp</a
+              >
             </div>
           </div>
         </div>
@@ -134,15 +132,18 @@
 
         <div class="resultsHeader">
           <div class="resultsHeader__left">
-            <strong id="resultsTitle">Résultats</strong>
+            <strong>Résultats</strong>
             <span class="muted" id="resultsSubtitle">—</span>
           </div>
-          <div class="resultsHeader__right muted">
-            Astuce : touche “Afficher le code” pour mesurer la demande.
-          </div>
+          <div class="resultsHeader__right muted">Astuce : “Afficher le code” → puis “Copier”.</div>
         </div>
 
         <div class="grid" id="offersGrid"></div>
+
+        <div class="empty" id="emptyState" hidden>
+          <strong>Aucune offre trouvée.</strong>
+          <div class="muted">Essaie : 1000 / 2000 / 5000, ou passe en Mixte.</div>
+        </div>
 
         <p class="habit">
           Beaucoup prennent le même forfait par habitude. <strong>Vérifie toujours avant d’acheter.</strong>
@@ -152,12 +153,10 @@
       <!-- PROMOS -->
       <section id="page-promos" class="page" hidden>
         <div class="pageHero">
-          <h2>Promos du moment (vérifiées par SMS)</h2>
-          <p>Mis à jour régulièrement. Codes USSD prêts à copier.</p>
+          <h2>Promos du moment</h2>
+          <p>Offres marquées “Promo” (si tu les ajoutes via Admin).</p>
         </div>
-
         <div class="grid" id="promosGrid"></div>
-
         <div class="smallTrust">
           <button class="linkBtn" id="howVerifyBtn2" type="button">Comment on vérifie ?</button>
           <span class="muted">On retire les promos expirées dès qu’on les détecte.</span>
@@ -167,16 +166,15 @@
       <!-- GUIDE -->
       <section id="page-guide" class="page" hidden>
         <div class="pageHero">
-          <h2>Tous les codes USSD utiles (Sénégal)</h2>
-          <p>Pour acheter un pass, vérifier ton solde, consulter tes bonus, etc.</p>
+          <h2>Guide USSD (Sénégal)</h2>
+          <p>Codes utiles et offline (quand ça existe).</p>
         </div>
 
         <div class="accordion">
-          <details>
+          <details open>
             <summary>Orange</summary>
             <ul class="list">
-              <li><strong>Catalogue Pass :</strong> #1234# (offline)</li>
-              <li><strong>Solde crédit :</strong> *123# (exemple)</li>
+              <li><strong>Catalogue pass :</strong> #1234# (offline)</li>
               <li class="muted">Certains codes peuvent varier selon offre.</li>
             </ul>
           </details>
@@ -184,16 +182,16 @@
           <details>
             <summary>Free</summary>
             <ul class="list">
-              <li><strong>Solde crédit :</strong> *xxx# (à confirmer)</li>
-              <li class="muted">Certains codes peuvent varier selon offre.</li>
+              <li><strong>À confirmer :</strong> codes selon SIM</li>
+              <li class="muted">On complétera avec tes données.</li>
             </ul>
           </details>
 
           <details>
             <summary>Expresso</summary>
             <ul class="list">
-              <li><strong>Solde crédit :</strong> *xxx# (à confirmer)</li>
-              <li class="muted">Certains codes peuvent varier selon offre.</li>
+              <li><strong>À confirmer :</strong> codes selon SIM</li>
+              <li class="muted">On complétera avec tes données.</li>
             </ul>
           </details>
         </div>
@@ -201,10 +199,9 @@
         <div class="card card--note">
           <h3>Astuces</h3>
           <ul class="list">
-            <li>Si un code ne marche pas : redémarre, vérifie la SIM par défaut, et essaye une autre variante.</li>
-            <li>Certains pass ne s’affichent que via SMS promo.</li>
+            <li>Si un code ne marche pas : redémarre, vérifie la SIM par défaut, réessaie.</li>
+            <li>Certains pass n’apparaissent que via SMS promo.</li>
           </ul>
-
           <a class="btn btn--primary" href="#/accueil">Retour accueil</a>
         </div>
       </section>
@@ -213,7 +210,7 @@
       <section id="page-contact" class="page" hidden>
         <div class="pageHero">
           <h2>Nous contacter</h2>
-          <p>Une promo qui ne marche pas ? Une erreur ? Une idée ?</p>
+          <p>Signaler une erreur ou envoyer une promo reçue par SMS.</p>
         </div>
 
         <div class="contactGrid">
@@ -227,7 +224,7 @@
             </select>
 
             <label class="label">Détails</label>
-            <textarea class="input" id="contactText1" rows="4" placeholder="Nom de l’offre, prix, code, ce qui ne marche pas..."></textarea>
+            <textarea class="input" id="contactText1" rows="4" placeholder="Nom, prix, code, problème..."></textarea>
 
             <button class="btn btn--primary" id="sendContact1" type="button">Envoyer</button>
             <p class="muted" id="contactStatus1"></p>
@@ -235,7 +232,7 @@
 
           <div class="card">
             <h3>Envoyer une promo reçue par SMS</h3>
-            <label class="label">Copie-colle le SMS</label>
+            <label class="label">SMS</label>
             <textarea class="input" id="contactSms" rows="4" placeholder="Colle le SMS ici..."></textarea>
 
             <label class="label">Opérateur</label>
@@ -251,24 +248,18 @@
 
           <div class="card">
             <h3>Partenariat / Pub</h3>
-            <p class="muted">
-              Doylu est indépendant des opérateurs. Partenariats possibles (clairs et transparents).
-            </p>
+            <p class="muted">Doylu reste neutre. La monétisation doit rester transparente.</p>
             <button class="btn" id="openPartnership" type="button">Contacter</button>
             <p class="muted" id="contactStatus3"></p>
           </div>
         </div>
-
-        <p class="muted footerNote">
-          Doylu est indépendant des opérateurs. Les offres sont informatives et vérifiées.
-        </p>
       </section>
 
       <!-- ADMIN -->
       <section id="page-admin" class="page" hidden>
         <div class="pageHero">
-          <h2>Admin (invisible au public)</h2>
-          <p class="muted">Accès via <code>#/admin</code> + mot de passe. Les modifications sont sauvegardées.</p>
+          <h2>Admin</h2>
+          <p class="muted">Accès via <code>#/admin</code>. Les utilisateurs ne voient pas le bouton.</p>
         </div>
 
         <div class="card" id="adminAuthCard">
@@ -292,10 +283,9 @@
             <h3>Ajouter / Modifier une offre</h3>
             <div class="formGrid">
               <div>
-                <label class="label">ID (laisser vide = auto)</label>
-                <input class="input" id="a_id" placeholder="ex: orange_pass_1000_5go" />
+                <label class="label">ID (vide = auto)</label>
+                <input class="input" id="a_id" placeholder="ex: orange_jour_5go_1000" />
               </div>
-
               <div>
                 <label class="label">Opérateur</label>
                 <select class="input" id="a_operator">
@@ -304,17 +294,14 @@
                   <option>Expresso</option>
                 </select>
               </div>
-
               <div>
-                <label class="label">Nom de l’offre</label>
+                <label class="label">Nom</label>
                 <input class="input" id="a_name" placeholder="ex: Pass Jour 5Go" />
               </div>
-
               <div>
-                <label class="label">Prix (FCFA)</label>
+                <label class="label">Prix</label>
                 <input class="input" id="a_price" type="number" min="0" step="50" />
               </div>
-
               <div>
                 <label class="label">Usage</label>
                 <select class="input" id="a_usage">
@@ -323,17 +310,14 @@
                   <option value="mixte">mixte</option>
                 </select>
               </div>
-
               <div>
                 <label class="label">Data (MB)</label>
                 <input class="input" id="a_data" type="number" min="0" step="50" placeholder="ex: 5120" />
               </div>
-
               <div>
                 <label class="label">Minutes</label>
                 <input class="input" id="a_minutes" type="number" min="0" step="1" placeholder="ex: 60" />
               </div>
-
               <div>
                 <label class="label">Validité</label>
                 <select class="input" id="a_validity">
@@ -343,12 +327,10 @@
                   <option value="inconnu">inconnu</option>
                 </select>
               </div>
-
               <div>
-                <label class="label">Code USSD</label>
-                <input class="input" id="a_ussd" placeholder="ex: #1234# (ou *123#)" />
+                <label class="label">USSD</label>
+                <input class="input" id="a_ussd" placeholder="ex: #1234#" />
               </div>
-
               <div>
                 <label class="label">Éligibilité</label>
                 <select class="input" id="a_eligibility">
@@ -358,15 +340,13 @@
                   <option value="special">special</option>
                 </select>
               </div>
-
               <div>
-                <label class="label">Promo ?</label>
+                <label class="label">Promo</label>
                 <select class="input" id="a_promo">
                   <option value="false">non</option>
                   <option value="true">oui</option>
                 </select>
               </div>
-
               <div>
                 <label class="label">Source</label>
                 <select class="input" id="a_source">
@@ -397,7 +377,7 @@
       <div class="modal__card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
         <div class="modal__header">
           <h3 id="modalTitle">Info</h3>
-          <button class="iconBtn" id="modalCloseBtn" aria-label="Fermer">✕</button>
+          <button class="iconBtn" id="modalCloseBtn" aria-label="Fermer" type="button">✕</button>
         </div>
         <div class="modal__body" id="modalBody"></div>
         <div class="modal__footer">
@@ -408,6 +388,6 @@
 
     <div class="toast" id="toast" hidden></div>
 
-    <script defer src="./script.js"></script>
+    <script src="./script.js" defer></script>
   </body>
 </html>
