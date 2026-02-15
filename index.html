@@ -1,442 +1,401 @@
-<!-- /index.html -->
 <!doctype html>
 <html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Doylu</title>
-    <meta
-      name="description"
-      content="Doylu compare les offres télécom selon ton budget. Données vérifiées, prêtes à copier."
-    />
-    <link rel="stylesheet" href="./style.css" />
-  </head>
-
-  <body>
-    <header class="topbar">
-      <div class="topbar__inner">
-        <a class="brand" href="#home" aria-label="Doylu - Accueil">
-          <span class="brand__logo">D</span>
-          <span class="brand__name">Doylu</span>
-        </a>
-
-        <button class="hamburger" id="hamburger" aria-label="Menu" aria-expanded="false">
-          ☰
-        </button>
-
-        <nav class="nav" id="nav">
-          <a class="nav__link" href="#home" data-route="home">Accueil</a>
-          <a class="nav__link" href="#promos" data-route="promos">Promos</a>
-          <a class="nav__link" href="#guide" data-route="guide">Guide USSD</a>
-          <a class="nav__link" href="#contact" data-route="contact">Contact</a>
-          <!-- Admin accessible uniquement via URL #admin -->
-        </nav>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Doylu — Comparateur de pass (SN)</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar__inner">
+      <div class="brand" role="banner" aria-label="Doylu">
+        <div class="brand__logo">D</div>
+        <div class="brand__name">Doylu</div>
       </div>
-    </header>
 
-    <main class="page">
-      <!-- ============ ACCUEIL ============ -->
-      <section class="view" id="view-home" data-view="home" aria-hidden="false">
-        <div class="hero">
-          <h1 class="hero__title">Avant d’acheter ton pass, vérifie ici.</h1>
-          <p class="hero__subtitle">
-            Compare les offres selon ton budget. <strong>Données vérifiées</strong>, prêtes à copier.
-          </p>
+      <button class="iconbtn" id="menuBtn" aria-label="Ouvrir le menu" aria-expanded="false">
+        ☰
+      </button>
 
-          <div class="heroCard">
-            <div class="heroCard__grid">
-              <div class="budget">
-                <div class="labelRow">
-                  <div class="label"><span class="emoji">💰</span> Ton budget (FCFA)</div>
-                  <div class="muted" id="budgetHint">—</div>
-                </div>
+      <nav class="nav" id="nav">
+        <a class="nav__link" href="#/accueil" data-route="accueil">Accueil</a>
+        <a class="nav__link" href="#/promos" data-route="promos">Promos</a>
+        <a class="nav__link" href="#/guide" data-route="guide">Guide USSD</a>
+        <a class="nav__link" href="#/contact" data-route="contact">Contact</a>
+        <a class="nav__link nav__link--admin" href="#/admin" data-route="admin" id="adminNavLink" hidden>Admin</a>
+      </nav>
+    </div>
+  </header>
 
-                <div class="budgetRow">
-                  <input
-                    id="budgetInput"
-                    class="input"
-                    inputmode="numeric"
-                    pattern="[0-9]*"
-                    placeholder="Ex: 1500"
-                    aria-label="Budget en FCFA"
-                  />
-                  <button class="btn btn--cta" id="searchBtn">
-                    <span id="searchBtnText">Voir les offres</span>
-                  </button>
-                </div>
+  <main class="page">
+    <!-- ACCUEIL -->
+    <section id="view-accueil" class="view" data-view="accueil" aria-label="Accueil">
+      <div class="hero">
+        <h1>Avant d’acheter ton pass, vérifie ici.</h1>
+        <p class="sub">
+          Compare les offres selon ton budget. <strong>Données vérifiées</strong>, prêtes à copier.
+        </p>
 
-                <div class="chips" id="budgetChips">
-                  <button class="chip" data-budget="500">500</button>
-                  <button class="chip" data-budget="1000">1000</button>
-                  <button class="chip" data-budget="2000">2000</button>
-                  <button class="chip" data-budget="3000">3000</button>
-                  <button class="chip" data-budget="5000">5000</button>
-                </div>
-
-                <div class="trustRow">
-                  <span class="pill"><span class="emoji">🔒</span> Vérifiées SMS/USSD</span>
-                  <span class="pill"><span class="emoji">⚖️</span> Site indépendant</span>
-                  <span class="pill"><span class="emoji">🕒</span> Dernière MAJ : <span id="lastUpdate">—</span></span>
-                  <button class="link" id="howVerifyBtn" type="button">Comment on vérifie ?</button>
-                </div>
+        <div class="card heroCard">
+          <div class="heroCard__row">
+            <div class="budgetBox">
+              <div class="budgetBox__label">💰 Ton budget (FCFA)</div>
+              <div class="budgetBox__inputRow">
+                <input id="budgetInput" class="input" type="number" inputmode="numeric" placeholder="Ex: 1500" />
+                <button id="searchBtn" class="btn btn--primary">Voir les offres</button>
               </div>
-            </div>
-          </div>
 
-          <div class="filters">
-            <div class="filterBlock">
-              <div class="filterLabel"><span class="emoji">🎯</span> Ton usage</div>
-              <div class="chips" id="usageChips">
-                <button class="chip chip--active" data-usage="data">📱 Data</button>
-                <button class="chip" data-usage="mixte">🔄 Mixte</button>
-                <button class="chip" data-usage="appels">📞 Appels</button>
+              <div class="budgetBox__quick">
+                <button class="chip chip--budget" data-budget="500">500</button>
+                <button class="chip chip--budget" data-budget="1000">1000</button>
+                <button class="chip chip--budget" data-budget="2000">2000</button>
+                <button class="chip chip--budget" data-budget="3000">3000</button>
+                <button class="chip chip--budget" data-budget="5000">5000</button>
               </div>
             </div>
 
-            <div class="filterBlock">
-              <div class="filterLabel"><span class="emoji">📡</span> Opérateur</div>
-              <div class="chips" id="operatorChips">
-                <button class="chip chip--active" data-operator="all">Tous</button>
-                <button class="chip" data-operator="Orange">Orange</button>
-                <button class="chip" data-operator="Free">Free</button>
-                <button class="chip" data-operator="Expresso">Expresso</button>
-                <button class="chip" data-operator="Lebara">Lebara</button>
-              </div>
-            </div>
-
-            <div class="filterBlock">
-              <div class="filterLabel"><span class="emoji">⏱</span> Validité</div>
-              <div class="chips" id="validityChips">
-                <button class="chip chip--active" data-validity="all">Toutes</button>
-                <button class="chip" data-validity="1">24h</button>
-                <button class="chip" data-validity="7">7 jours</button>
-                <button class="chip" data-validity="30">30 jours</button>
-              </div>
-            </div>
-
-            <a class="waCard" id="waSubscribe" href="#" target="_blank" rel="noreferrer">
-              <span class="waDot"></span>
-              <div>
-                <div class="waTitle">Recevoir les bons plans sur WhatsApp</div>
-                <div class="waSub">Gratuit. 1 message/jour max.</div>
-              </div>
-            </a>
-          </div>
-
-          <div class="bestBanner" id="bestBanner" hidden>
-            <div class="bestBanner__title" id="bestTitle">🔥 Meilleure valeur</div>
-            <div class="bestBanner__gain" id="bestGain" hidden></div>
-            <div class="bestBanner__hint" id="bestHint"></div>
-          </div>
-
-          <div class="resultsHead" id="resultsHead" hidden>
-            <div class="resultsHead__left">
-              <div class="muted" id="resultsCount">—</div>
-            </div>
-            <div class="resultsHead__right">
-              <span class="muted">Astuce : touche “Afficher le code” pour mesurer la demande.</span>
-            </div>
-          </div>
-
-          <div class="grid" id="offersGrid"></div>
-
-          <div class="empty" id="emptyState" hidden>
-            <div class="empty__title">Aucune offre trouvée.</div>
-            <div class="empty__actions">
-              <button class="btn" data-suggest="1000">Essayer 1000</button>
-              <button class="btn" data-suggest="2000">Essayer 2000</button>
-              <button class="btn" data-suggest="5000">Essayer 5000</button>
-              <button class="btn" data-suggest-usage="mixte">Passer en Mixte</button>
-            </div>
-          </div>
-
-          <div class="footerNote">
-            Beaucoup prennent le même forfait par habitude. <strong>Vérifie toujours avant d’acheter.</strong>
-          </div>
-        </div>
-      </section>
-
-      <!-- ============ PROMOS ============ -->
-      <section class="view" id="view-promos" data-view="promos" aria-hidden="true" hidden>
-        <div class="section">
-          <h2 class="section__title">Promos du moment (vérifiées)</h2>
-          <p class="section__subtitle">Mis à jour chaque jour. Codes USSD prêts à copier.</p>
-
-          <div class="filters filters--compact">
-            <div class="filterBlock">
-              <div class="filterLabel">Opérateur</div>
-              <div class="chips" id="promosOperatorChips">
-                <button class="chip chip--active" data-operator="all">Tous</button>
-                <button class="chip" data-operator="Orange">Orange</button>
-                <button class="chip" data-operator="Free">Free</button>
-                <button class="chip" data-operator="Expresso">Expresso</button>
-                <button class="chip" data-operator="Lebara">Lebara</button>
-              </div>
-            </div>
-            <div class="filterBlock">
-              <div class="filterLabel">Type</div>
-              <div class="chips" id="promosUsageChips">
-                <button class="chip chip--active" data-usage="all">Tous</button>
-                <button class="chip" data-usage="data">📱 Data</button>
-                <button class="chip" data-usage="appels">📞 Appels</button>
-                <button class="chip" data-usage="mixte">🔄 Mixte</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="grid" id="promosGrid"></div>
-
-          <div class="trustBox">
-            <button class="link" id="howVerifyBtn2" type="button">Comment on vérifie ?</button>
-            <p class="muted">
-              On publie les offres reçues par SMS/USSD et confirmées par plusieurs utilisateurs.
-              Si une promo est expirée, elle est retirée.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <!-- ============ GUIDE ============ -->
-      <section class="view" id="view-guide" data-view="guide" aria-hidden="true" hidden>
-        <div class="section">
-          <h2 class="section__title">Tous les codes USSD utiles (Sénégal)</h2>
-          <p class="section__subtitle">Pour acheter un pass, vérifier ton solde, consulter tes bonus, etc.</p>
-
-          <div class="accordion">
-            <details open>
-              <summary>Orange</summary>
-              <div class="accBody">
-                <div class="row"><span>Catalogue Pass (offline)</span><code>*1234#</code></div>
-                <div class="row"><span>Solde crédit (exemple)</span><code>*123#</code></div>
-                <div class="row"><span>Bonus / options</span><code>(peut varier selon offre)</code></div>
-              </div>
-            </details>
-            <details>
-              <summary>Free</summary>
-              <div class="accBody">
-                <div class="row"><span>Solde crédit</span><code>*xxx#</code></div>
-                <div class="row"><span>Pass internet</span><code>*xxx#</code></div>
-              </div>
-            </details>
-            <details>
-              <summary>Expresso</summary>
-              <div class="accBody">
-                <div class="row"><span>Solde crédit</span><code>*xxx#</code></div>
-                <div class="row"><span>Pass internet</span><code>*xxx#</code></div>
-              </div>
-            </details>
-          </div>
-
-          <div class="tips">
-            <h3>Astuces</h3>
-            <ul>
-              <li>Si un code ne marche pas : redémarre, vérifie la SIM par défaut, et essaye une autre variante.</li>
-              <li>Certains pass ne s’affichent que via SMS promo.</li>
-            </ul>
-            <a class="btn btn--cta" href="#home">Trouver mon meilleur pass</a>
-          </div>
-        </div>
-      </section>
-
-      <!-- ============ CONTACT ============ -->
-      <section class="view" id="view-contact" data-view="contact" aria-hidden="true" hidden>
-        <div class="section">
-          <h2 class="section__title">Nous contacter</h2>
-          <p class="section__subtitle">Une promo qui ne marche pas ? Une erreur ? Une idée ?</p>
-
-          <div class="contactGrid">
-            <div class="card">
-              <h3>Signaler une offre</h3>
-              <label class="field">
-                <span>Opérateur</span>
-                <select id="reportOperator" class="input">
-                  <option>Orange</option>
-                  <option>Free</option>
-                  <option>Expresso</option>
-                  <option>Lebara</option>
-                </select>
-              </label>
-              <label class="field">
-                <span>Détails</span>
-                <textarea id="reportText" class="input" rows="4" placeholder="Nom offre, prix, code, ce qui ne marche pas..."></textarea>
-              </label>
-              <button class="btn btn--cta" id="reportSend">Envoyer</button>
-              <p class="muted">En V1, on envoie via WhatsApp (rapide, zéro compte).</p>
-            </div>
-
-            <div class="card">
-              <h3>Envoyer une promo reçue par SMS</h3>
-              <label class="field">
-                <span>Opérateur</span>
-                <select id="smsOperator" class="input">
-                  <option>Orange</option>
-                  <option>Free</option>
-                  <option>Expresso</option>
-                  <option>Lebara</option>
-                </select>
-              </label>
-              <label class="field">
-                <span>Copie-colle le SMS</span>
-                <textarea id="smsText" class="input" rows="5" placeholder="Colle le SMS ici..."></textarea>
-              </label>
-              <button class="btn btn--cta" id="smsSend">Envoyer</button>
-            </div>
-
-            <div class="card">
-              <h3>Partenariat / Pub</h3>
-              <p class="muted">
-                Doylu est indépendant. On accepte des partenariats possibles (clairs et transparents).
-              </p>
-              <div class="contactBtns">
-                <button class="btn" id="bizMail">Email</button>
-                <button class="btn" id="bizWA">WhatsApp</button>
-              </div>
-              <div class="trustMini">
-                <div>✅ Site indépendant des opérateurs.</div>
-                <div>✅ Offres informatives et vérifiées.</div>
-              </div>
+            <div class="trust">
+              <span class="pill">🔒 Vérifiées SMS/USSD</span>
+              <span class="pill">⚖️ Site indépendant</span>
+              <span class="pill" id="lastUpdatePill">🕒 Dernière MAJ : —</span>
+              <button class="link" id="howVerifyBtn" type="button">Comment on vérifie ?</button>
             </div>
           </div>
         </div>
-      </section>
 
-      <!-- ============ ADMIN (URL #admin) ============ -->
-      <section class="view" id="view-admin" data-view="admin" aria-hidden="true" hidden>
-        <div class="section">
-          <h2 class="section__title">Admin (invisible au public)</h2>
-          <p class="section__subtitle">Accès via <code>#admin</code> + mot de passe.</p>
-
-          <div class="card">
-            <div class="adminLogin" id="adminLogin">
-              <label class="field">
-                <span>Mot de passe</span>
-                <input id="adminPass" class="input" type="password" placeholder="••••••••" />
-              </label>
-              <button class="btn btn--cta" id="adminLoginBtn">Se connecter</button>
-              <p class="muted">Astuce : change le mot de passe dans <code>script.js</code> (ADMIN_PASSWORD).</p>
-            </div>
-
-            <div id="adminPanel" hidden>
-              <div class="adminTop">
-                <div class="muted">Offres enregistrées : <span id="adminCount">—</span></div>
-                <div class="adminActions">
-                  <button class="btn" id="exportJsonBtn">Exporter JSON</button>
-                  <label class="btn btn--file">
-                    Importer JSON
-                    <input id="importJsonInput" type="file" accept="application/json" hidden />
-                  </label>
-                  <button class="btn btn--danger" id="resetBtn">Reset (démo)</button>
-                </div>
-              </div>
-
-              <hr class="sep" />
-
-              <h3>Ajouter / Modifier une offre</h3>
-              <div class="formGrid">
-                <label class="field">
-                  <span>Opérateur</span>
-                  <select id="fOperator" class="input">
-                    <option>Orange</option>
-                    <option>Free</option>
-                    <option>Expresso</option>
-                    <option>Lebara</option>
-                  </select>
-                </label>
-
-                <label class="field">
-                  <span>Nom offre</span>
-                  <input id="fName" class="input" placeholder="Ex: Pass Jour 5Go" />
-                </label>
-
-                <label class="field">
-                  <span>Prix (FCFA)</span>
-                  <input id="fPrice" class="input" inputmode="numeric" placeholder="1000" />
-                </label>
-
-                <label class="field">
-                  <span>Usage</span>
-                  <select id="fUsage" class="input">
-                    <option value="data">Data</option>
-                    <option value="mixte">Mixte</option>
-                    <option value="appels">Appels</option>
-                  </select>
-                </label>
-
-                <label class="field">
-                  <span>Data (MB)</span>
-                  <input id="fData" class="input" inputmode="numeric" placeholder="Ex: 5120" />
-                </label>
-
-                <label class="field">
-                  <span>Minutes</span>
-                  <input id="fMinutes" class="input" inputmode="numeric" placeholder="Ex: 60" />
-                </label>
-
-                <label class="field">
-                  <span>Validité (jours)</span>
-                  <input id="fValidity" class="input" inputmode="numeric" placeholder="Ex: 7" />
-                </label>
-
-                <label class="field">
-                  <span>USSD</span>
-                  <input id="fUssd" class="input" placeholder="Ex: *1234#" />
-                </label>
-
-                <label class="field">
-                  <span>Promo ?</span>
-                  <select id="fPromo" class="input">
-                    <option value="false">Non</option>
-                    <option value="true">Oui</option>
-                  </select>
-                </label>
-
-                <label class="field">
-                  <span>Éligibilité</span>
-                  <select id="fEligibility" class="input">
-                    <option value="public">Public</option>
-                    <option value="student">Étudiant</option>
-                    <option value="corporate">Corporate</option>
-                    <option value="special">Spécial / conditions</option>
-                  </select>
-                </label>
-
-                <label class="field">
-                  <span>Source</span>
-                  <select id="fSource" class="input">
-                    <option value="official">Source officielle</option>
-                    <option value="sms">Source SMS</option>
-                    <option value="user">Utilisateur</option>
-                  </select>
-                </label>
-
-                <div class="field field--wide">
-                  <button class="btn btn--cta" id="saveOfferBtn">Enregistrer</button>
-                  <button class="btn" id="clearFormBtn">Vider</button>
-                </div>
-              </div>
-
-              <hr class="sep" />
-
-              <h3>Liste</h3>
-              <div class="adminList" id="adminList"></div>
+        <div class="filtersGrid">
+          <div class="card filterCard">
+            <div class="filterCard__title">🎯 Ton usage</div>
+            <div class="chips">
+              <button class="chip chip--toggle is-active" data-usage="data" id="usageData">📱 Data</button>
+              <button class="chip chip--toggle" data-usage="mixte" id="usageMixte">🔄 Mixte</button>
+              <button class="chip chip--toggle" data-usage="appels" id="usageAppels">📞 Appels</button>
             </div>
           </div>
+
+          <div class="card filterCard">
+            <div class="filterCard__title">📡 Opérateur</div>
+            <div class="chips">
+              <button class="chip chip--toggle is-active" data-operator="Tous">Tous</button>
+              <button class="chip chip--toggle" data-operator="Orange">Orange</button>
+              <button class="chip chip--toggle" data-operator="Free">Free</button>
+              <button class="chip chip--toggle" data-operator="Expresso">Expresso</button>
+            </div>
+          </div>
+
+          <div class="card filterCard">
+            <div class="filterCard__title">⏱ Validité</div>
+            <div class="chips">
+              <button class="chip chip--toggle is-active" data-validity="Toutes">Toutes</button>
+              <button class="chip chip--toggle" data-validity="24h">24h</button>
+              <button class="chip chip--toggle" data-validity="7j">7 jours</button>
+              <button class="chip chip--toggle" data-validity="30j">30 jours</button>
+            </div>
+          </div>
+
+          <div class="card waCard">
+            <div class="waCard__title">🟢 Recevoir les bons plans sur WhatsApp</div>
+            <div class="waCard__sub">Gratuit. 1 message/jour max.</div>
+            <a class="btn btn--wa" id="waCta" href="#" target="_blank" rel="noreferrer">Ouvrir WhatsApp</a>
+          </div>
         </div>
-      </section>
+      </div>
 
-      <!-- Toast -->
-      <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
-
-      <!-- Modal -->
-      <dialog class="modal" id="modal">
-        <div class="modal__header">
-          <div class="modal__title" id="modalTitle">Info</div>
-          <button class="modal__close" id="modalClose" aria-label="Fermer">✕</button>
+      <div class="results">
+        <div id="bestBanner" class="bestBanner" hidden>
+          <div class="bestBanner__title" id="bestTitle">🔥 Meilleure valeur</div>
+          <div class="bestBanner__gain" id="bestGain" hidden></div>
+          <div class="bestBanner__hint" id="bestHint" hidden></div>
+          <div class="bestBanner__meta" id="bestMeta"></div>
         </div>
-        <div class="modal__body" id="modalBody"></div>
-      </dialog>
-    </main>
 
-    <script src="./script.js"></script>
-  </body>
+        <div class="results__head">
+          <div id="resultsCount" class="muted">—</div>
+          <div class="muted">Astuce : touche “Afficher le code” pour mesurer la demande.</div>
+        </div>
+
+        <div id="offersGrid" class="grid"></div>
+
+        <div id="noOffers" class="empty" hidden>
+          <h3>Aucune offre trouvée</h3>
+          <p>Essaie :</p>
+          <div class="chips">
+            <button class="chip chip--suggest" data-suggest-budget="1000">Budget 1000</button>
+            <button class="chip chip--suggest" data-suggest-budget="2000">Budget 2000</button>
+            <button class="chip chip--suggest" data-suggest-budget="5000">Budget 5000</button>
+            <button class="chip chip--suggest" data-suggest-usage="mixte">Passer en Mixte</button>
+            <button class="chip chip--suggest" data-suggest-validity="7j">Validité 7 jours</button>
+          </div>
+        </div>
+
+        <div class="footerNote">
+          Beaucoup prennent le même forfait par habitude. <strong>Vérifie toujours avant d’acheter.</strong>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROMOS -->
+    <section id="view-promos" class="view" data-view="promos" hidden aria-label="Promos">
+      <div class="viewHead">
+        <h2>Promos du moment (vérifiées par SMS)</h2>
+        <p class="muted">Mis à jour régulièrement. Codes USSD prêts à copier.</p>
+      </div>
+
+      <div class="card compact">
+        <div class="filterRow">
+          <div class="filterRow__title">Filtres</div>
+          <div class="chips">
+            <button class="chip chip--toggle is-active" data-promos-operator="Tous">Tous</button>
+            <button class="chip chip--toggle" data-promos-operator="Orange">Orange</button>
+            <button class="chip chip--toggle" data-promos-operator="Free">Free</button>
+            <button class="chip chip--toggle" data-promos-operator="Expresso">Expresso</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="promosGrid" class="grid"></div>
+
+      <div class="card compact">
+        <button class="link" id="howVerifyBtn2" type="button">Comment on vérifie ?</button>
+      </div>
+    </section>
+
+    <!-- GUIDE -->
+    <section id="view-guide" class="view" data-view="guide" hidden aria-label="Guide USSD">
+      <div class="viewHead">
+        <h2>Tous les codes USSD utiles (Sénégal)</h2>
+        <p class="muted">Pour acheter un pass, vérifier ton solde, consulter tes bonus, etc. (peut varier selon offre)</p>
+      </div>
+
+      <div class="accordion">
+        <details open>
+          <summary>Orange</summary>
+          <ul>
+            <li><strong>Catalogue pass (offline)</strong> : <code>*1234#</code></li>
+            <li><strong>Solde crédit</strong> : <code>*123#</code> (exemple)</li>
+          </ul>
+        </details>
+        <details>
+          <summary>Free</summary>
+          <ul>
+            <li><strong>Solde crédit</strong> : <code>*xxx#</code></li>
+          </ul>
+        </details>
+        <details>
+          <summary>Expresso</summary>
+          <ul>
+            <li><strong>Solde crédit</strong> : <code>*xxx#</code></li>
+          </ul>
+        </details>
+      </div>
+
+      <div class="card compact">
+        <h3>Astuces</h3>
+        <ul class="muted">
+          <li>Si un code ne marche pas : redémarre, vérifie la SIM par défaut, et essaye une autre variante.</li>
+          <li>Certains pass ne s’affichent que via SMS promo.</li>
+        </ul>
+        <a class="btn btn--primary" href="#/accueil">Trouver mon meilleur pass</a>
+      </div>
+    </section>
+
+    <!-- CONTACT -->
+    <section id="view-contact" class="view" data-view="contact" hidden aria-label="Contact">
+      <div class="viewHead">
+        <h2>Nous contacter</h2>
+        <p class="muted">Une promo qui ne marche pas ? Une erreur ? Une idée ?</p>
+      </div>
+
+      <div class="grid grid--contact">
+        <div class="card">
+          <h3>Signaler une offre</h3>
+          <label class="label">Opérateur</label>
+          <select id="contactOperator" class="input">
+            <option>Orange</option>
+            <option>Free</option>
+            <option>Expresso</option>
+          </select>
+          <label class="label">Détails</label>
+          <textarea id="contactDetails" class="input" rows="5" placeholder="Nom de l’offre, prix, code, ce qui ne marche pas..."></textarea>
+          <button id="contactSend1" class="btn btn--primary">Envoyer</button>
+          <div class="muted small" id="contactInfo1"></div>
+        </div>
+
+        <div class="card">
+          <h3>Envoyer une promo reçue par SMS</h3>
+          <label class="label">Copie-colle le SMS ici</label>
+          <textarea id="promoSmsText" class="input" rows="5" placeholder="Colle le SMS ici..."></textarea>
+          <label class="label">Opérateur</label>
+          <select id="promoSmsOperator" class="input">
+            <option>Orange</option>
+            <option>Free</option>
+            <option>Expresso</option>
+          </select>
+          <button id="contactSend2" class="btn btn--primary">Envoyer</button>
+          <div class="muted small" id="contactInfo2"></div>
+        </div>
+
+        <div class="card">
+          <h3>Partenariat / Pub</h3>
+          <p class="muted">Doylu est indépendant. Partenariats possibles (clairs et transparents).</p>
+          <button id="contactSend3" class="btn">Contacter</button>
+          <div class="muted small" id="contactInfo3"></div>
+        </div>
+      </div>
+
+      <div class="card compact">
+        <strong>Confiance</strong>
+        <div class="muted">Doylu est indépendant des opérateurs. Les offres sont informatives et vérifiées.</div>
+      </div>
+    </section>
+
+    <!-- ADMIN -->
+    <section id="view-admin" class="view" data-view="admin" hidden aria-label="Admin">
+      <div class="viewHead">
+        <h2>Admin (invisible au public)</h2>
+        <p class="muted">Ici tu ajoutes/modifies les offres. Les changements s’appliquent immédiatement sur Accueil.</p>
+      </div>
+
+      <div class="card">
+        <div class="adminTop">
+          <button id="adminLogout" class="btn">Se déconnecter</button>
+          <button id="exportJsonBtn" class="btn">Exporter JSON</button>
+          <label class="btn btn--file">
+            Importer JSON
+            <input id="importJsonInput" type="file" accept="application/json" hidden />
+          </label>
+          <button id="resetDemoBtn" class="btn btn--danger">Reset démo</button>
+        </div>
+        <div class="muted small">Astuce : l’export te sert de backup. L’import remplace la base locale.</div>
+      </div>
+
+      <div class="grid grid--admin">
+        <div class="card">
+          <h3>Ajouter / Modifier une offre</h3>
+
+          <div class="formGrid">
+            <div>
+              <label class="label">ID (auto si vide)</label>
+              <input id="a_id" class="input" placeholder="ex: orange_1000_5go_24h" />
+            </div>
+
+            <div>
+              <label class="label">Opérateur</label>
+              <select id="a_operator" class="input">
+                <option>Orange</option>
+                <option>Free</option>
+                <option>Expresso</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="label">Nom</label>
+              <input id="a_name" class="input" placeholder="ex: Pass Jour 5Go" />
+            </div>
+
+            <div>
+              <label class="label">Prix (FCFA)</label>
+              <input id="a_price" class="input" type="number" inputmode="numeric" />
+            </div>
+
+            <div>
+              <label class="label">Usage</label>
+              <select id="a_usage" class="input">
+                <option value="data">data</option>
+                <option value="appels">appels</option>
+                <option value="mixte">mixte</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="label">Data (MB)</label>
+              <input id="a_data" class="input" type="number" inputmode="numeric" placeholder="ex: 5120" />
+            </div>
+
+            <div>
+              <label class="label">Minutes</label>
+              <input id="a_minutes" class="input" type="number" inputmode="numeric" placeholder="ex: 60" />
+            </div>
+
+            <div>
+              <label class="label">Validité</label>
+              <select id="a_validity" class="input">
+                <option value="24h">24h</option>
+                <option value="7j">7j</option>
+                <option value="30j">30j</option>
+                <option value="mois">mois</option>
+                <option value="inconnu">inconnu</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="label">USSD</label>
+              <input id="a_ussd" class="input" placeholder="ex: *1234#" />
+            </div>
+
+            <div>
+              <label class="label">Source</label>
+              <select id="a_source" class="input">
+                <option value="official">official</option>
+                <option value="sms">sms</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="label">Promo</label>
+              <select id="a_promo" class="input">
+                <option value="false">non</option>
+                <option value="true">oui</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="label">Éligibilité</label>
+              <select id="a_eligibility" class="input">
+                <option value="public">public</option>
+                <option value="student">student</option>
+                <option value="corporate">corporate</option>
+                <option value="special">special</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="adminActions">
+            <button id="saveOfferBtn" class="btn btn--primary">Enregistrer</button>
+            <button id="clearFormBtn" class="btn">Vider</button>
+          </div>
+
+          <div class="muted small" id="adminStatus"></div>
+        </div>
+
+        <div class="card">
+          <h3>Offres (liste)</h3>
+          <div class="muted small">Clique une offre pour éditer. “Supprimer” retire de la base locale.</div>
+          <div id="adminOffersList" class="adminList"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL -->
+  <div class="modal" id="modal" hidden>
+    <div class="modal__backdrop" id="modalBackdrop"></div>
+    <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal__head">
+        <div id="modalTitle" class="modal__title">Info</div>
+        <button class="iconbtn" id="modalClose" aria-label="Fermer">✕</button>
+      </div>
+      <div class="modal__body" id="modalBody"></div>
+      <div class="modal__foot">
+        <button class="btn btn--primary" id="modalOk">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="./script.js"></script>
+</body>
 </html>
