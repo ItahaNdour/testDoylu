@@ -32,6 +32,7 @@ body{
   color:var(--ink);
   background: radial-gradient(1200px 500px at 50% -10%, rgba(14,165,233,.14), transparent 60%),
               linear-gradient(180deg, #f7efe4, var(--bg));
+  overflow-x:hidden; /* ✅ stop scroll horizontal */
 }
 
 .hidden{ display:none !important; }
@@ -183,6 +184,7 @@ body{
   cursor:pointer;
 }
 
+/* ===== Filters ===== */
 .filters-grid{
   margin-top:16px;
   display:grid;
@@ -200,8 +202,13 @@ body{
   font-weight:900;
   margin-bottom:10px;
 }
-.chip-row{ display:flex; flex-wrap:wrap; gap:10px; }
 
+/* ✅ chips: allow horizontal scroll on small screens instead of overflow */
+.chip-row{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
 .chip{
   border:1px solid var(--line);
   background: rgba(255,255,255,.9);
@@ -209,6 +216,7 @@ body{
   padding:10px 14px;
   font-weight:900;
   cursor:pointer;
+  white-space:nowrap;
 }
 .chip.is-active{
   background:#0f172a;
@@ -261,6 +269,7 @@ body{
 .mini-meta{ display:flex; gap:10px; justify-content:flex-end; padding-top:8px; }
 .muted{ color:var(--muted); font-weight:700; }
 
+/* ===== Best banner (2 reco) ===== */
 .best-banner{
   margin-top:18px;
   background: rgba(244,167,0,.10);
@@ -290,6 +299,20 @@ body{
   border-radius: 999px;
   font-weight:900;
 }
+.best-2cols{
+  margin-top:12px;
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:12px;
+}
+.best-box{
+  background: rgba(255,255,255,.75);
+  border:1px solid var(--line);
+  border-radius: 18px;
+  padding:12px;
+}
+.best-box-title{ font-weight:1000; }
+.best-box-line{ margin-top:6px; font-weight:900; }
 .best-meta{ margin-top:10px; color:var(--muted); font-weight:800; }
 
 .empty{
@@ -324,6 +347,7 @@ body{
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding:14px;
+  max-width:100%;
 }
 .offer-head{
   display:flex;
@@ -406,7 +430,7 @@ body{
   font-weight:1000;
   text-align:center;
 }
-.ussd code{ font-size:20px; }
+.ussd code{ font-size:20px; word-break:break-word; }
 
 .specials{ margin-top:18px; }
 .section-title{ margin:0 0 10px; font-size:18px; font-weight:1000; }
@@ -527,66 +551,26 @@ body{
   .admin-row{ grid-template-columns: 1fr; }
 }
 
+/* ✅ Mobile: 1 colonne filtres + chips scroll + polices/paddings réduits */
 @media (max-width: 760px){
-
-  /* Header */
   #menuBtn{ display:inline-flex; }
   .nav{ display:none; }
-
-  /* Layout */
   .budget-row{ grid-template-columns: 1fr; }
   .budget-input-row{ grid-template-columns: 1fr; }
-  .grid{ grid-template-columns: 1fr; } /* 1 colonne mobile */
 
-  /* ✅ Titre + sous-titre plus compact */
-  .view h1{ font-size: 28px; }
-  .subtitle{ font-size: 14px; }
-
-  /* ✅ Cartes plus compactes */
-  .card{ padding: 14px; }
-  .hero-card{ padding: 14px; }
-
-  /* ✅ Filtres : 2 colonnes (propre), WhatsApp en pleine largeur */
-  .filters-grid{
-    grid-template-columns: 1fr 1fr;
-    gap:12px;
-  }
-  .wa-card{
-    grid-column: 1 / -1;
-  }
-
-  /* ✅ Filtres : chips en SCROLL horizontal (épure le design) */
-  .filter-card{
-    padding:12px;
-  }
-  .filter-title{
-    margin-bottom:8px;
-    font-size:14px;
-  }
+  .filters-grid{ grid-template-columns: 1fr; } /* ✅ plus de partie coupée */
   .chip-row{
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    gap:8px;
-    padding-bottom: 2px;
-  }
-  .chip-row::-webkit-scrollbar{ height:0px; }
-
-  .chip{
-    padding: 8px 12px;
-    font-size: 14px;
-    white-space: nowrap;
-    flex: 0 0 auto;
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    padding-bottom:6px;
   }
 
-  /* ✅ Quick budgets plus légers */
-  .quick-budgets{ gap:8px; }
-  .chip-budget{ padding: 8px 12px; }
+  .chip{ padding:9px 12px; font-weight:800; }
+  .view h1{ font-size: clamp(24px, 7vw, 34px); }
+  .subtitle{ font-size:14px; }
 
-  /* ✅ Prix un peu moins gros */
-  .offer-price{ font-size: 30px; }
-
-  /* ✅ Moins d’air autour */
-  .best-banner{ padding: 14px; }
-  .results-head{ margin-top: 14px; }
+  .best-2cols{ grid-template-columns: 1fr; }
+  .grid{ grid-template-columns: 1fr; } /* 1 colonne mobile */
+  .offer-price{ font-size:32px; }
 }
