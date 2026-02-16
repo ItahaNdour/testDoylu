@@ -1,33 +1,29 @@
-/* Doylu V1 — script.js COMPLET (stable)
+/* Doylu V1 — script.js COMPLET (stable + mobile clean)
    - Navigation hash (#accueil/#promos/#ussd/#contact/#admin)
-   - Budget V1 (proche): price >= X AND price <= X*1.2
-   - Filtres: usage, opérateur (Orange/Free/Expresso), validité
-   - 2 recos: Meilleur Data + Meilleure Durée (uniquement public)
-   - Gain dynamique (uniquement public, si >=2 comparables)
-   - Offres sous conditions (student/corporate/special) séparées
+   - Budget: affiche uniquement [X ; X*1.2]
+   - Filtres: usage, opérateur, validité
+   - Tri + limite affichage (évite liste “catalogue”)
+   - Reco: 2 blocs (Meilleur Volume + Meilleure Durée)
+   - Gain dynamique (uniquement offres public, si comparables)
+   - Offres sous conditions séparées
    - Admin: ajout/modif, liste, import/export JSON (localStorage)
 */
 
 (() => {
   "use strict";
 
-  /* =========================
-   * 0) CONFIG
-   * ========================= */
   const CONFIG = {
     operators: ["Orange", "Free", "Expresso"],
     validityMap: { "Toutes": null, "24h": 1, "7 jours": 7, "30 jours": 30 },
     adminPassword: "doylu2026",
     STORAGE_KEY: "doylu_offers_v1",
     WA_LINK: "https://wa.me/?text=",
-    budgetTolerance: 1.2, // ✅ X .. 1.2X
+    budgetMaxFactor: 1.2, // ✅ X..X*1.2
   };
 
-  /* =========================
-   * 1) HELPERS
-   * ========================= */
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
   const safe = (v) => (v == null ? "" : String(v));
   const clampInt = (v, fallback = 0) => {
     const n = Number.parseInt(String(v ?? "").replace(/[^\d]/g, ""), 10);
@@ -66,9 +62,6 @@
   };
   const closeModal = () => $("#modal").classList.add("hidden");
 
-  /* =========================
-   * 2) OFFERS STORAGE
-   * ========================= */
   const normalizeOffer = (o) => {
     const operator = safe(o.operator).trim();
     const usage = String(o.type_usage ?? "data").toLowerCase();
@@ -91,28 +84,21 @@
     };
   };
 
-  // ✅ j’ai remis + complété plusieurs offres Orange vues dans tes captures
   const defaultOffers = () => ([
-    // ORANGE (public) — data
     { operator: "Orange", name: "Pass USSD 3,5Go (24h)", price_fcfa: 700, type_usage: "data", data_mb: 3.5 * 1024, validity_days: 1, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
     { operator: "Orange", name: "Pass Jour 300Mo", price_fcfa: 200, type_usage: "data", data_mb: 300, validity_days: 1, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
     { operator: "Orange", name: "Pass Jour 1,5Go", price_fcfa: 500, type_usage: "data", data_mb: 1536, validity_days: 1, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
     { operator: "Orange", name: "Pass Jour 5Go", price_fcfa: 1000, type_usage: "data", data_mb: 5 * 1024, validity_days: 1, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
     { operator: "Orange", name: "Pass Nuit 5Go (23h-6h)", price_fcfa: 500, type_usage: "data", data_mb: 5 * 1024, validity_days: 1, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
 
-    // semaine (public)
-    { operator: "Orange", name: "Pass Éducation 1Go (7 jours)", price_fcfa: 100, type_usage: "data", data_mb: 1024, validity_days: 7, ussd_code: "#1234#", eligibility_type: "student", source_badge: "Source SMS", status: "active" },
     { operator: "Orange", name: "Pass semaine 600Mo", price_fcfa: 500, type_usage: "data", data_mb: 600, validity_days: 7, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
     { operator: "Orange", name: "Pass semaine 2Go", price_fcfa: 1000, type_usage: "data", data_mb: 2 * 1024, validity_days: 7, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
-    { operator: "Orange", name: "Pass semaine 10Go", price_fcfa: 2500, type_usage: "data", data_mb: 10 * 1024, validity_days: 7, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
 
-    // mois (public)
-    { operator: "Orange", name: "Promo 10Go (30 jours) exclusif OM", price_fcfa: 2000, type_usage: "data", data_mb: 10 * 1024, validity_days: 30, ussd_code: "#1234#", eligibility_type: "public", est_promo: true, source_badge: "Source SMS", status: "active" },
-    { operator: "Orange", name: "Pass 5Go Exclusif OM (30 jours)", price_fcfa: 2000, type_usage: "data", data_mb: 5 * 1024, validity_days: 30, ussd_code: "#1234#", eligibility_type: "special", source_badge: "Source SMS", status: "active" },
     { operator: "Orange", name: "Pass Mois 12Go", price_fcfa: 3000, type_usage: "data", data_mb: 12 * 1024, validity_days: 30, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
     { operator: "Orange", name: "Pass Mois 25Go", price_fcfa: 5000, type_usage: "data", data_mb: 25 * 1024, validity_days: 30, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
-    { operator: "Orange", name: "Pass Mois 60Go", price_fcfa: 10000, type_usage: "data", data_mb: 60 * 1024, validity_days: 30, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
-    { operator: "Orange", name: "Pass Mois 100Go", price_fcfa: 15000, type_usage: "data", data_mb: 100 * 1024, validity_days: 30, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
+    { operator: "Orange", name: "Promo 10Go (30 jours) exclusif OM", price_fcfa: 2000, type_usage: "data", data_mb: 10 * 1024, validity_days: 30, ussd_code: "#1234#", eligibility_type: "public", est_promo: true, source_badge: "Source SMS", status: "active" },
+
+    { operator: "Orange", name: "Pass Éducation 1Go", price_fcfa: 100, type_usage: "data", data_mb: 1024, validity_days: 7, ussd_code: "#1234#", eligibility_type: "student", source_badge: "Source SMS", status: "active" },
   ].map(normalizeOffer));
 
   const loadOffers = () => {
@@ -135,9 +121,6 @@
 
   let OFFERS = loadOffers();
 
-  /* =========================
-   * 3) STATE
-   * ========================= */
   const state = {
     route: "accueil",
     budgetX: 1000,
@@ -145,13 +128,12 @@
     operator: "Tous",
     validity: "Toutes",
     promoOperator: "Tous",
+    sort: "valeur",   // valeur|prix|volume|duree
+    limit: 8,         // 8|16|0
     isAdmin: false,
     editingId: null,
   };
 
-  /* =========================
-   * 4) FILTERING / SCORING
-   * ========================= */
   const isActive = (o) => safe(o.status).toLowerCase() === "active";
   const isOperatorAllowed = (o) => CONFIG.operators.includes(o.operator);
 
@@ -169,28 +151,18 @@
     return o.validity_days <= maxDays;
   };
 
-  // ✅ Budget V1: X .. X*1.2
-  const filterByBudgetRange = (list, x) => {
-    if (!Number.isFinite(x) || x <= 0) return [];
-    const low = x;
-    const high = Math.floor(x * CONFIG.budgetTolerance);
-    return list.filter((o) => Number.isFinite(o.price_fcfa) && o.price_fcfa >= low && o.price_fcfa <= high);
-  };
-
+  // ✅ Score “valeur”
   const computeScore = (o, usage) => {
     if (!Number.isFinite(o.price_fcfa) || o.price_fcfa <= 0) return -Infinity;
-
     if (usage === "appels") {
       if (!Number.isFinite(o.minutes)) return -Infinity;
       return o.minutes / o.price_fcfa;
     }
-
     if (usage === "mixte") {
       if (Number.isFinite(o.data_mb)) return o.data_mb / o.price_fcfa;
       if (Number.isFinite(o.minutes)) return o.minutes / o.price_fcfa;
       return -Infinity;
     }
-
     if (!Number.isFinite(o.data_mb)) return -Infinity;
     return o.data_mb / o.price_fcfa;
   };
@@ -199,8 +171,7 @@
     if (!Number.isFinite(gainMb) || gainMb <= 0) return null;
     if (gainMb < 1024) {
       const rounded = roundTo(gainMb, 50);
-      const v = Math.max(50, rounded);
-      return `🔥 Tu as +${v} Mo`;
+      return `🔥 Tu as +${Math.max(50, rounded)} Mo`;
     }
     const gainGo = mbToGo(gainMb);
     const roundedGo = roundTo(gainGo, 0.5);
@@ -213,9 +184,7 @@
     return `🔥 Tu as +${Math.round(gainMin)} min`;
   };
 
-  const computeGain = (sortedPublicByScore, usage) => {
-    const top1 = sortedPublicByScore[0] || null;
-    const top2 = sortedPublicByScore[1] || null;
+  const computeGain = (top1, top2, usage) => {
     if (!top1 || !top2) return null;
 
     if (usage === "appels") {
@@ -245,10 +214,8 @@
     return { label, sub: "par rapport à la 2e meilleure offre publique" };
   };
 
-  const computeRecommendationBadge = (bestDataOffer, usage) => {
-    const o = bestDataOffer;
+  const computeRecommendation = (o, usage) => {
     if (!o) return "Basé sur ton budget et ton usage";
-
     const days = Number.isFinite(o.validity_days) ? o.validity_days : null;
 
     if (usage === "appels") {
@@ -263,6 +230,53 @@
     return "Basé sur ton budget et ton usage";
   };
 
+  // ✅ Budget: [X ; X*1.2]
+  const filterByBudgetRange = (list, x) => {
+    if (!Number.isFinite(x) || x <= 0) return [];
+    const min = x;
+    const max = Math.floor(x * CONFIG.budgetMaxFactor);
+    return list.filter((o) => Number.isFinite(o.price_fcfa) && o.price_fcfa >= min && o.price_fcfa <= max);
+  };
+
+  const pickBestVolume = (offers) => {
+    if (!offers.length) return null;
+    if (state.usage === "appels") {
+      const withMin = offers.filter(o => Number.isFinite(o.minutes));
+      return withMin.sort((a,b) => (b.minutes ?? -1) - (a.minutes ?? -1))[0] || null;
+    }
+    // data/mixte: priorité data
+    const withData = offers.filter(o => Number.isFinite(o.data_mb));
+    if (withData.length) return withData.sort((a,b)=> (b.data_mb ?? -1) - (a.data_mb ?? -1))[0] || null;
+    const withMin = offers.filter(o => Number.isFinite(o.minutes));
+    return withMin.sort((a,b)=> (b.minutes ?? -1) - (a.minutes ?? -1))[0] || null;
+  };
+
+  const pickBestDuration = (offers) => {
+    const withDays = offers.filter(o => Number.isFinite(o.validity_days));
+    if (!withDays.length) return null;
+    return withDays.sort((a,b)=> (b.validity_days ?? -1) - (a.validity_days ?? -1))[0] || null;
+  };
+
+  const sortOffers = (offers) => {
+    const s = state.sort;
+
+    if (s === "prix") return offers.slice().sort((a,b)=> a.price_fcfa - b.price_fcfa);
+    if (s === "duree") return offers.slice().sort((a,b)=> (b.validity_days ?? -1) - (a.validity_days ?? -1));
+
+    if (s === "volume") {
+      if (state.usage === "appels") {
+        return offers.slice().sort((a,b)=> (b.minutes ?? -1) - (a.minutes ?? -1));
+      }
+      return offers.slice().sort((a,b)=> (b.data_mb ?? -1) - (a.data_mb ?? -1));
+    }
+
+    // valeur (default)
+    return offers
+      .map((o) => ({ o, score: computeScore(o, state.usage) }))
+      .sort((a,b)=> b.score - a.score)
+      .map((x)=> x.o);
+  };
+
   const pipeline = () => {
     const x = state.budgetX;
 
@@ -271,19 +285,9 @@
       .filter(isActive)
       .filter(isOperatorAllowed);
 
-    // 1) Budget X..1.2X
+    // 1) Budget range
     list = filterByBudgetRange(list, x);
-    if (!list.length) {
-      return {
-        list: [],
-        publicOffers: [],
-        specialOffers: [],
-        publicSortedByScore: [],
-        bestData: null,
-        bestDuration: null,
-        gain: null,
-      };
-    }
+    if (!list.length) return { list: [], publicOffers: [], specialOffers: [], sortedPublic: [], top1: null, top2: null, gain: null, bestVolume: null, bestDuration: null };
 
     // 2) Operator
     if (state.operator !== "Tous") list = list.filter((o) => o.operator === state.operator);
@@ -297,37 +301,32 @@
     const publicOffers = list.filter((o) => o.eligibility_type === "public");
     const specialOffers = list.filter((o) => o.eligibility_type !== "public");
 
-    // Sort public by score (value)
-    const publicSortedByScore = publicOffers
-      .map((o) => ({ o, score: computeScore(o, state.usage) }))
-      .filter((x) => Number.isFinite(x.score) && x.score > -Infinity)
-      .sort((a, b) => b.score - a.score)
-      .map((x) => x.o);
+    // Tri principal sur public
+    const sortedPublicAll = sortOffers(publicOffers);
 
-    const bestData = publicSortedByScore[0] || null;
+    const top1 = sortedPublicAll[0] || null;
+    const top2 = sortedPublicAll[1] || null;
+    const gain = top1 && top2 ? computeGain(top1, top2, state.usage) : null;
 
-    // Best duration (longest validity in filtered PUBLIC set)
-    const bestDuration = publicOffers
-      .filter((o) => Number.isFinite(o.validity_days))
-      .sort((a, b) => (b.validity_days - a.validity_days) || (a.price_fcfa - b.price_fcfa))
-      .at(0) || bestData;
+    // 2 recommandations (volume + durée)
+    const bestVolume = pickBestVolume(publicOffers);
+    const bestDuration = pickBestDuration(publicOffers);
 
-    const gain = computeGain(publicSortedByScore, state.usage);
+    // Limite affichage
+    const limitedPublic = (state.limit && Number(state.limit) > 0)
+      ? sortedPublicAll.slice(0, Number(state.limit))
+      : sortedPublicAll;
 
-    return { list, publicOffers, specialOffers, publicSortedByScore, bestData, bestDuration, gain };
+    return { list, publicOffers, specialOffers, sortedPublic: limitedPublic, top1, top2, gain, bestVolume, bestDuration };
   };
 
-  /* =========================
-   * 5) RENDER
-   * ========================= */
   const renderOfferCard = (o, { isTop = false } = {}) => {
-    const badgeTop = isTop ? `<div class="pill pill-top">🏆 TOP CHOIX</div>` : "";
+    const badgeTop = isTop ? `<div class="pill pill-top">🏆 Meilleur</div>` : "";
     const badgeSource = `<div class="pill pill-info">${safe(o.source_badge || "Source SMS")}</div>`;
     const badgePromo = o.est_promo ? `<div class="pill pill-warning">Promo</div>` : "";
 
-    const usage = state.usage;
     let metaLine = "";
-    if (usage === "appels") {
+    if (state.usage === "appels") {
       metaLine = `📞 ${Number.isFinite(o.minutes) ? `${Math.round(o.minutes)} min` : "—"} • ⏱ ${Number.isFinite(o.validity_days) ? `${o.validity_days} jour(s)` : "Inconnu"}`;
     } else {
       metaLine = `📱 ${Number.isFinite(o.data_mb) ? formatData(o.data_mb) : "—"} • ⏱ ${Number.isFinite(o.validity_days) ? `${o.validity_days} jour(s)` : "Inconnu"}`;
@@ -379,6 +378,7 @@
       special: "🔒 Sous conditions",
     };
     const label = map[o.eligibility_type] || "🔒 Sous conditions";
+
     const metaLine = `📱 ${Number.isFinite(o.data_mb) ? formatData(o.data_mb) : "—"} • ⏱ ${Number.isFinite(o.validity_days) ? `${o.validity_days} jour(s)` : "Inconnu"}`;
 
     const shareText = encodeURIComponent(`Doylu — ${o.operator} • ${o.name} • ${formatFcfa(o.price_fcfa)} • ${metaLine}`);
@@ -410,11 +410,11 @@
     `;
   };
 
-  const renderBestBanner = ({ bestData, bestDuration, gain, list }) => {
+  const renderBestBanner = ({ top1, gain, list, bestVolume, bestDuration }) => {
     const banner = $("#bestBanner");
     if (!banner) return;
 
-    if (!bestData && !bestDuration) {
+    if (!top1) {
       banner.classList.add("hidden");
       return;
     }
@@ -422,32 +422,42 @@
     banner.classList.remove("hidden");
 
     $("#bestTitle").textContent = `🔥 Recommandations pour ${formatFcfa(state.budgetX)}`;
-    $("#bestReco").textContent = `✅ ${computeRecommendationBadge(bestData, state.usage)}`;
 
-    // gain (uniquement si pertinent)
-    const bestGain = $("#bestGain");
-    const bestSub = $("#bestSub");
     if (gain?.label) {
-      bestGain.textContent = gain.label;
-      bestGain.classList.remove("hidden");
-      bestSub.textContent = gain.sub || "";
-      bestSub.classList.remove("hidden");
+      $("#bestGain").textContent = gain.label;
+      $("#bestGain").classList.remove("hidden");
+      $("#bestSub").textContent = gain.sub || "";
+      $("#bestSub").classList.remove("hidden");
     } else {
-      bestGain.classList.add("hidden");
-      bestSub.classList.add("hidden");
+      $("#bestGain").classList.add("hidden");
+      $("#bestSub").classList.add("hidden");
     }
 
-    const dataLine = bestData
-      ? `${bestData.operator} — ${bestData.name} • ${formatFcfa(bestData.price_fcfa)}`
-      : "—";
-    const durationLine = bestDuration
-      ? `${bestDuration.operator} — ${bestDuration.name} • ⏱ ${Number.isFinite(bestDuration.validity_days) ? `${bestDuration.validity_days} jour(s)` : "Inconnu"}`
-      : "—";
+    $("#bestReco").textContent = `✅ ${computeRecommendation(top1, state.usage)}`;
 
-    $("#bestDataLine").textContent = dataLine;
-    $("#bestDurationLine").textContent = durationLine;
+    const min = state.budgetX;
+    const max = Math.floor(state.budgetX * CONFIG.budgetMaxFactor);
+    $("#bestMeta").textContent = `${list.length} offre(s) • Budget: ${formatFcfa(min)} → ${formatFcfa(max)} • Tri: ${state.sort}`;
 
-    $("#bestMeta").textContent = `${list.length} offre(s) proches (entre ${formatFcfa(state.budgetX)} et ${formatFcfa(Math.floor(state.budgetX * CONFIG.budgetTolerance))})`;
+    const bestDataLine = $("#bestDataLine");
+    const bestDurationLine = $("#bestDurationLine");
+
+    const volumeLabel =
+      state.usage === "appels"
+        ? (bestVolume && Number.isFinite(bestVolume.minutes) ? `${Math.round(bestVolume.minutes)} min` : "—")
+        : (bestVolume && Number.isFinite(bestVolume.data_mb) ? formatData(bestVolume.data_mb) : "—");
+
+    if (bestDataLine) {
+      bestDataLine.textContent = bestVolume
+        ? `🏆 Meilleur Volume : ${bestVolume.operator} — ${bestVolume.name} (${volumeLabel})`
+        : "";
+    }
+
+    if (bestDurationLine) {
+      bestDurationLine.textContent = bestDuration
+        ? `⏳ Meilleure Durée : ${bestDuration.operator} — ${bestDuration.name} (${bestDuration.validity_days} jour(s))`
+        : "";
+    }
   };
 
   const renderPromos = () => {
@@ -470,11 +480,11 @@
     }
 
     empty.classList.add("hidden");
-    grid.innerHTML = promos.map((o) => renderOfferCard(o)).join("");
+    grid.innerHTML = promos.map((o) => renderOfferCard(o, { isTop: false })).join("");
   };
 
   const renderResults = () => {
-    const { list, specialOffers, publicSortedByScore, bestData, bestDuration, gain } = pipeline();
+    const { list, specialOffers, sortedPublic, top1, gain, bestVolume, bestDuration } = pipeline();
 
     // count
     const countEl = $("#offersCount");
@@ -485,26 +495,29 @@
     if (empty) {
       if (!list.length) {
         empty.classList.remove("hidden");
-        empty.textContent = `Aucune offre proche de ${formatFcfa(state.budgetX)}. Essaie un autre montant.`;
+        empty.textContent = `Aucune offre pour ${formatFcfa(state.budgetX)}. Essaie 2000 ou 5000 FCFA.`;
       } else {
         empty.classList.add("hidden");
       }
     }
 
-    renderBestBanner({ bestData, bestDuration, gain, list });
+    renderBestBanner({ top1, gain, list, bestVolume, bestDuration });
 
-    // title
+    // title (✅ plus “proches”)
     const resultsTitle = $("#resultsTitle");
-    if (resultsTitle) resultsTitle.textContent = list.length
-      ? `Résultats ${list.length} offre(s) proches de ${formatFcfa(state.budgetX)}`
-      : "Résultats";
+    if (resultsTitle) {
+      const min = state.budgetX;
+      const max = Math.floor(state.budgetX * CONFIG.budgetMaxFactor);
+      resultsTitle.textContent = `Résultats : ${list.length} offre(s) (${formatFcfa(min)} → ${formatFcfa(max)})`;
+    }
 
-    // main grid = public only (sorted)
+    // main grid = public triées + limitées
     const grid = $("#offersGrid");
     if (grid) {
-      grid.innerHTML = publicSortedByScore
+      const html = sortedPublic
         .map((o, idx) => renderOfferCard(o, { isTop: idx === 0 }))
         .join("");
+      grid.innerHTML = html || "";
     }
 
     // specials
@@ -522,9 +535,7 @@
     renderPromos();
   };
 
-  /* =========================
-   * 6) ROUTER
-   * ========================= */
+  /* ROUTER */
   const views = ["accueil", "promos", "ussd", "contact", "admin"];
 
   const showRoute = (route) => {
@@ -555,12 +566,9 @@
     showRoute(h);
   };
 
-  /* =========================
-   * 7) UI EVENTS
-   * ========================= */
   const setActiveChips = (filter, value) => {
     $$(`.chip-filter[data-filter="${filter}"]`).forEach((btn) => {
-      btn.classList.toggle("is-active", btn.getAttribute("data-value") === value);
+      btn.classList.toggle("is-active", btn.getAttribute("data-value") === String(value));
     });
   };
 
@@ -630,13 +638,23 @@
         setActiveChips("promoOperator", value);
         renderPromos();
       }
+      if (filter === "sort") {
+        state.sort = value;
+        setActiveChips("sort", value);
+        renderResults();
+      }
+      if (filter === "limit") {
+        state.limit = Number(value);
+        setActiveChips("limit", value);
+        renderResults();
+      }
     });
 
     const verifyHtml = `
       <ul>
         <li>On collecte des offres reçues par SMS/USSD et des annonces publiques.</li>
         <li>On vérifie la cohérence (prix, volume, validité) et on retire les offres expirées.</li>
-        <li>Les offres “sous conditions” restent visibles mais ne dominent jamais le Top.</li>
+        <li>Les offres “sous conditions” restent visibles mais ne dominent jamais les recommandations.</li>
       </ul>
     `;
     $("#howVerifyBtn")?.addEventListener("click", () => openModal("Comment on vérifie ?", verifyHtml));
@@ -711,80 +729,7 @@
     });
   };
 
-  /* =========================
-   * 8) ADMIN
-   * ========================= */
-  const resetAdminForm = (clearToast = true) => {
-    $("#aOperator").value = "Orange";
-    $("#aName").value = "";
-    $("#aPrice").value = "";
-    $("#aUsage").value = "data";
-    $("#aDataMb").value = "";
-    $("#aMinutes").value = "";
-    $("#aValidityDays").value = "";
-    $("#aUssd").value = "#1234#";
-    $("#aEligibility").value = "public";
-    $("#aSourceBadge").value = "Source SMS";
-    $("#aPromo").checked = false;
-    if (clearToast) $("#adminToast").textContent = "";
-  };
-
-  const renderAdminList = () => {
-    const list = $("#adminList");
-    if (!list) return;
-
-    const items = OFFERS.map(normalizeOffer)
-      .filter(isOperatorAllowed)
-      .sort((a, b) => (a.operator + a.name).localeCompare(b.operator + b.name));
-
-    list.innerHTML = items.map((o) => {
-      const meta = `${o.type_usage} • ${formatFcfa(o.price_fcfa)} • ${o.eligibility_type}`;
-      return `
-        <div class="admin-item" data-admin-offer="${o.offer_id}">
-          <strong>${o.operator} — ${o.name}</strong>
-          <div class="muted">${meta}</div>
-          <div class="row">
-            <button class="btn btn-light" data-admin-action="edit" data-id="${o.offer_id}">Modifier</button>
-            <button class="btn btn-light" data-admin-action="delete" data-id="${o.offer_id}">Supprimer</button>
-          </div>
-        </div>
-      `;
-    }).join("");
-
-    list.onclick = (e) => {
-      const b = e.target.closest("[data-admin-action]");
-      if (!b) return;
-      const action = b.getAttribute("data-admin-action");
-      const id = b.getAttribute("data-id");
-      const o = OFFERS.find((x) => x.offer_id === id);
-      if (!o) return;
-
-      if (action === "delete") {
-        OFFERS = OFFERS.filter((x) => x.offer_id !== id);
-        saveOffers(OFFERS);
-        renderAdminList();
-        renderResults();
-        toast("Supprimé");
-      }
-
-      if (action === "edit") {
-        state.editingId = id;
-        $("#aOperator").value = o.operator;
-        $("#aName").value = o.name;
-        $("#aPrice").value = o.price_fcfa;
-        $("#aUsage").value = o.type_usage;
-        $("#aDataMb").value = o.data_mb ?? "";
-        $("#aMinutes").value = o.minutes ?? "";
-        $("#aValidityDays").value = o.validity_days ?? "";
-        $("#aUssd").value = o.ussd_code ?? "";
-        $("#aEligibility").value = o.eligibility_type ?? "public";
-        $("#aSourceBadge").value = o.source_badge ?? "Source SMS";
-        $("#aPromo").checked = Boolean(o.est_promo);
-        $("#adminToast").textContent = "✏️ Mode édition";
-      }
-    };
-  };
-
+  /* ADMIN */
   const renderAdmin = () => {
     const gate = $("#adminGate");
     const panel = $("#adminPanel");
@@ -886,19 +831,92 @@
     renderAdminList();
   };
 
-  /* =========================
-   * 9) INIT
-   * ========================= */
+  const resetAdminForm = (clearToast = true) => {
+    $("#aOperator").value = "Orange";
+    $("#aName").value = "";
+    $("#aPrice").value = "";
+    $("#aUsage").value = "data";
+    $("#aDataMb").value = "";
+    $("#aMinutes").value = "";
+    $("#aValidityDays").value = "";
+    $("#aUssd").value = "#1234#";
+    $("#aEligibility").value = "public";
+    $("#aSourceBadge").value = "Source SMS";
+    $("#aPromo").checked = false;
+    if (clearToast) $("#adminToast").textContent = "";
+  };
+
+  const renderAdminList = () => {
+    const list = $("#adminList");
+    if (!list) return;
+
+    const items = OFFERS.map(normalizeOffer)
+      .filter(isOperatorAllowed)
+      .sort((a, b) => (a.operator + a.name).localeCompare(b.operator + b.name));
+
+    list.innerHTML = items
+      .map((o) => {
+        const meta = `${o.type_usage} • ${formatFcfa(o.price_fcfa)} • ${o.eligibility_type}`;
+        return `
+          <div class="admin-item" data-admin-offer="${o.offer_id}">
+            <strong>${o.operator} — ${o.name}</strong>
+            <div class="muted">${meta}</div>
+            <div class="row">
+              <button class="btn btn-light" data-admin-action="edit" data-id="${o.offer_id}">Modifier</button>
+              <button class="btn btn-light" data-admin-action="delete" data-id="${o.offer_id}">Supprimer</button>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+
+    list.onclick = (e) => {
+      const b = e.target.closest("[data-admin-action]");
+      if (!b) return;
+      const action = b.getAttribute("data-admin-action");
+      const id = b.getAttribute("data-id");
+      const o = OFFERS.find((x) => x.offer_id === id);
+      if (!o) return;
+
+      if (action === "delete") {
+        OFFERS = OFFERS.filter((x) => x.offer_id !== id);
+        saveOffers(OFFERS);
+        renderAdminList();
+        renderResults();
+        toast("Supprimé");
+      }
+
+      if (action === "edit") {
+        state.editingId = id;
+        $("#aOperator").value = o.operator;
+        $("#aName").value = o.name;
+        $("#aPrice").value = o.price_fcfa;
+        $("#aUsage").value = o.type_usage;
+        $("#aDataMb").value = o.data_mb ?? "";
+        $("#aMinutes").value = o.minutes ?? "";
+        $("#aValidityDays").value = o.validity_days ?? "";
+        $("#aUssd").value = o.ussd_code ?? "";
+        $("#aEligibility").value = o.eligibility_type ?? "public";
+        $("#aSourceBadge").value = o.source_badge ?? "Source SMS";
+        $("#aPromo").checked = Boolean(o.est_promo);
+        $("#adminToast").textContent = "✏️ Mode édition";
+      }
+    };
+  };
+
   const init = () => {
     $("#year").textContent = String(new Date().getFullYear());
     $("#lastUpdate").textContent = `Dernière MAJ : aujourd'hui ${nowHHMM()}`;
 
     $("#budgetInput").value = String(state.budgetX);
+    setActiveBudgetChips(state.budgetX);
 
     setActiveChips("usage", "data");
     setActiveChips("operator", "Tous");
     setActiveChips("validity", "Toutes");
     setActiveChips("promoOperator", "Tous");
+    setActiveChips("sort", "valeur");
+    setActiveChips("limit", "8");
 
     bindEvents();
 
