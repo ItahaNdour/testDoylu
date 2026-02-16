@@ -528,9 +528,65 @@ body{
 }
 
 @media (max-width: 760px){
+
+  /* Header */
   #menuBtn{ display:inline-flex; }
   .nav{ display:none; }
+
+  /* Layout */
   .budget-row{ grid-template-columns: 1fr; }
   .budget-input-row{ grid-template-columns: 1fr; }
   .grid{ grid-template-columns: 1fr; } /* 1 colonne mobile */
+
+  /* ✅ Titre + sous-titre plus compact */
+  .view h1{ font-size: 28px; }
+  .subtitle{ font-size: 14px; }
+
+  /* ✅ Cartes plus compactes */
+  .card{ padding: 14px; }
+  .hero-card{ padding: 14px; }
+
+  /* ✅ Filtres : 2 colonnes (propre), WhatsApp en pleine largeur */
+  .filters-grid{
+    grid-template-columns: 1fr 1fr;
+    gap:12px;
+  }
+  .wa-card{
+    grid-column: 1 / -1;
+  }
+
+  /* ✅ Filtres : chips en SCROLL horizontal (épure le design) */
+  .filter-card{
+    padding:12px;
+  }
+  .filter-title{
+    margin-bottom:8px;
+    font-size:14px;
+  }
+  .chip-row{
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap:8px;
+    padding-bottom: 2px;
+  }
+  .chip-row::-webkit-scrollbar{ height:0px; }
+
+  .chip{
+    padding: 8px 12px;
+    font-size: 14px;
+    white-space: nowrap;
+    flex: 0 0 auto;
+  }
+
+  /* ✅ Quick budgets plus légers */
+  .quick-budgets{ gap:8px; }
+  .chip-budget{ padding: 8px 12px; }
+
+  /* ✅ Prix un peu moins gros */
+  .offer-price{ font-size: 30px; }
+
+  /* ✅ Moins d’air autour */
+  .best-banner{ padding: 14px; }
+  .results-head{ margin-top: 14px; }
 }
