@@ -77,67 +77,85 @@
           </div>
         </div>
 
-        <div class="filters-grid">
-          <div class="filter-card">
-            <div class="filter-title">🎯 Ton usage</div>
-            <div class="chip-row">
-              <button class="chip chip-filter is-active" data-filter="usage" data-value="data">📱 Data</button>
-              <button class="chip chip-filter" data-filter="usage" data-value="mixte">🔄 Mixte</button>
-              <button class="chip chip-filter" data-filter="usage" data-value="appels">📞 Appels</button>
+        <!-- ✅ Filtres pliables sur mobile -->
+        <details class="filters-details" open>
+          <summary class="filters-summary">⚙️ Filtres & tri</summary>
+
+          <div class="filters-grid">
+            <div class="filter-card">
+              <div class="filter-title">🎯 Ton usage</div>
+              <div class="chip-row">
+                <button class="chip chip-filter is-active" data-filter="usage" data-value="data">📱 Data</button>
+                <button class="chip chip-filter" data-filter="usage" data-value="mixte">🔄 Mixte</button>
+                <button class="chip chip-filter" data-filter="usage" data-value="appels">📞 Appels</button>
+              </div>
+            </div>
+
+            <div class="filter-card">
+              <div class="filter-title">📡 Opérateur</div>
+              <div class="chip-row">
+                <button class="chip chip-filter is-active" data-filter="operator" data-value="Tous">Tous</button>
+                <button class="chip chip-filter" data-filter="operator" data-value="Orange">Orange</button>
+                <button class="chip chip-filter" data-filter="operator" data-value="Free">Free</button>
+                <button class="chip chip-filter" data-filter="operator" data-value="Expresso">Expresso</button>
+              </div>
+            </div>
+
+            <div class="filter-card">
+              <div class="filter-title">⏱ Validité</div>
+              <div class="chip-row">
+                <button class="chip chip-filter is-active" data-filter="validity" data-value="Toutes">Toutes</button>
+                <button class="chip chip-filter" data-filter="validity" data-value="24h">24h</button>
+                <button class="chip chip-filter" data-filter="validity" data-value="7 jours">7 jours</button>
+                <button class="chip chip-filter" data-filter="validity" data-value="30 jours">30 jours</button>
+              </div>
+            </div>
+
+            <!-- ✅ NOUVEAU : Tri -->
+            <div class="filter-card">
+              <div class="filter-title">↕️ Trier</div>
+              <div class="chip-row">
+                <button class="chip chip-filter is-active" data-filter="sort" data-value="valeur">Valeur</button>
+                <button class="chip chip-filter" data-filter="sort" data-value="prix">Prix</button>
+                <button class="chip chip-filter" data-filter="sort" data-value="volume">Volume</button>
+                <button class="chip chip-filter" data-filter="sort" data-value="duree">Durée</button>
+              </div>
+            </div>
+
+            <!-- ✅ NOUVEAU : Limite affichage -->
+            <div class="filter-card">
+              <div class="filter-title">📌 Afficher</div>
+              <div class="chip-row">
+                <button class="chip chip-filter is-active" data-filter="limit" data-value="8">Top 8</button>
+                <button class="chip chip-filter" data-filter="limit" data-value="16">Top 16</button>
+                <button class="chip chip-filter" data-filter="limit" data-value="0">Tout</button>
+              </div>
+            </div>
+
+            <div class="wa-card">
+              <div class="wa-title">🟢 Recevoir les bons plans sur WhatsApp</div>
+              <div class="wa-sub">Gratuit. 1 message/jour max.</div>
+              <a id="waOpenBtn" class="btn btn-wa" href="#" rel="noopener noreferrer">Ouvrir WhatsApp</a>
             </div>
           </div>
-
-          <div class="filter-card">
-            <div class="filter-title">📡 Opérateur</div>
-            <div class="chip-row">
-              <button class="chip chip-filter is-active" data-filter="operator" data-value="Tous">Tous</button>
-              <button class="chip chip-filter" data-filter="operator" data-value="Orange">Orange</button>
-              <button class="chip chip-filter" data-filter="operator" data-value="Free">Free</button>
-              <button class="chip chip-filter" data-filter="operator" data-value="Expresso">Expresso</button>
-            </div>
-          </div>
-
-          <div class="filter-card">
-            <div class="filter-title">⏱ Validité</div>
-            <div class="chip-row">
-              <button class="chip chip-filter is-active" data-filter="validity" data-value="Toutes">Toutes</button>
-              <button class="chip chip-filter" data-filter="validity" data-value="24h">24h</button>
-              <button class="chip chip-filter" data-filter="validity" data-value="7 jours">7 jours</button>
-              <button class="chip chip-filter" data-filter="validity" data-value="30 jours">30 jours</button>
-            </div>
-          </div>
-
-          <div class="wa-card">
-            <div class="wa-title">🟢 Recevoir les bons plans sur WhatsApp</div>
-            <div class="wa-sub">Gratuit. 1 message/jour max.</div>
-            <a id="waOpenBtn" class="btn btn-wa" href="#" rel="noopener noreferrer">Ouvrir WhatsApp</a>
-          </div>
-        </div>
+        </details>
       </div>
 
-      <!-- BANNER TOP (2 RECO) -->
+      <!-- BANNER TOP -->
       <div id="bestBanner" class="best-banner hidden">
         <div class="best-title" id="bestTitle">🔥 Recommandations</div>
-
         <div class="best-gain-row">
           <div id="bestGain" class="best-gain hidden"></div>
           <div id="bestSub" class="best-sub hidden"></div>
         </div>
-
         <div id="bestReco" class="best-reco">✅ Basé sur ton budget et ton usage</div>
-
-        <div class="best-2cols">
-          <div class="best-box">
-            <div class="best-box-title">🏆 Meilleur Data</div>
-            <div id="bestDataLine" class="best-box-line muted">—</div>
-          </div>
-          <div class="best-box">
-            <div class="best-box-title">⏳ Meilleure Durée</div>
-            <div id="bestDurationLine" class="best-box-line muted">—</div>
-          </div>
-        </div>
-
         <div id="bestMeta" class="best-meta"></div>
+
+        <!-- ✅ 2 recommandations -->
+        <div class="best-duo">
+          <div id="bestDataLine" class="best-line"></div>
+          <div id="bestDurationLine" class="best-line"></div>
+        </div>
       </div>
 
       <!-- EMPTY STATE -->
@@ -152,7 +170,7 @@
 
       <section id="specialOffersWrap" class="specials hidden">
         <h2 class="section-title">🔒 Offres sous conditions</h2>
-        <p class="muted">Ces offres ne participent pas au Top ni au gain. Elles peuvent nécessiter un justificatif selon l’opérateur.</p>
+        <p class="muted">Ces offres ne participent pas aux recommandations ni au gain. Elles peuvent nécessiter un justificatif selon l’opérateur.</p>
         <div id="specialOffersGrid" class="grid"></div>
       </section>
 
