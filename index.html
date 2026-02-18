@@ -49,7 +49,7 @@
               </div>
 
               <div class="budget-input-row">
-                <input id="budgetInput" type="number" inputmode="numeric" placeholder="Ex: 1500 (laisser vide = toutes les offres)" />
+                <input id="budgetInput" type="number" inputmode="numeric" placeholder="Ex: 1500 (vide = tout afficher)" />
                 <button id="budgetSubmit" class="btn btn-cta">Voir les offres</button>
               </div>
 
@@ -69,22 +69,21 @@
             </div>
           </div>
 
-          <div class="trust-row">
-            <div class="pill">🔒 Vérifiées SMS/USSD</div>
-            <div class="pill">⚖️ Site indépendant</div>
-            <div id="lastUpdate" class="pill">Dernière MAJ : —</div>
+          <!-- trust compact (option 1) -->
+          <div class="trust-row compact">
+            <div class="pill">🔒 Vérifiées</div>
+            <div class="pill">⚖️ Indépendant</div>
+            <div id="lastUpdate" class="pill">MAJ : —</div>
             <button id="howVerifyBtn" class="link-btn" type="button">Comment on vérifie ?</button>
           </div>
-        </div>
 
-        <!-- ✅ Bouton mobile pour ouvrir/fermer les filtres -->
-        <div class="filters-toggle-row">
-          <button id="filtersToggle" class="btn btn-light filters-toggle" type="button">
-            ⚙️ Filtres & tri <span id="filtersToggleIcon">▼</span>
+          <!-- Mobile: bouton filtres -->
+          <button id="filtersToggle" class="btn btn-light filters-toggle" type="button" aria-expanded="false">
+            ⚙️ Filtres & tri
           </button>
         </div>
 
-        <!-- ✅ Panneau filtres (desktop = visible, mobile = repliable) -->
+        <!-- PANEL filtres (desktop visible, mobile accordéon) -->
         <div id="filtersPanel" class="filters-panel">
           <div class="filters-grid">
             <div class="filter-card">
@@ -125,7 +124,7 @@
         </div>
       </div>
 
-      <!-- BANNER TOP -->
+      <!-- BANNER TOP (compact) -->
       <div id="bestBanner" class="best-banner hidden">
         <div class="best-title" id="bestTitle">🔥 Meilleur choix</div>
         <div id="bestLine1" class="best-line"></div>
