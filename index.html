@@ -49,7 +49,7 @@
               </div>
 
               <div class="budget-input-row">
-                <input id="budgetInput" type="number" inputmode="numeric" placeholder="Ex: 1500" />
+                <input id="budgetInput" type="number" inputmode="numeric" placeholder="Ex: 1500 (laisser vide = toutes les offres)" />
                 <button id="budgetSubmit" class="btn btn-cta">Voir les offres</button>
               </div>
 
@@ -69,65 +69,70 @@
             </div>
           </div>
 
-          <!-- ✅ TRUST COMPACT (Option 1) -->
-          <div class="trust-compact">
-            <span>🔒 Vérifiées</span>
-            <span>•</span>
-            <span>⚖️ Indépendant</span>
-            <span>•</span>
-            <span id="lastUpdate">MAJ : —</span>
-            <span style="flex:1 1 auto;"></span>
+          <div class="trust-row">
+            <div class="pill">🔒 Vérifiées SMS/USSD</div>
+            <div class="pill">⚖️ Site indépendant</div>
+            <div id="lastUpdate" class="pill">Dernière MAJ : —</div>
             <button id="howVerifyBtn" class="link-btn" type="button">Comment on vérifie ?</button>
           </div>
         </div>
 
-        <div class="filters-grid">
-          <div class="filter-card">
-            <div class="filter-title">🎯 Ton usage</div>
-            <div class="chip-row">
-              <button class="chip chip-filter is-active" data-filter="usage" data-value="data">📱 Data</button>
-              <button class="chip chip-filter" data-filter="usage" data-value="mixte">🔄 Mixte</button>
-              <button class="chip chip-filter" data-filter="usage" data-value="appels">📞 Appels</button>
-            </div>
-          </div>
+        <!-- ✅ Bouton mobile pour ouvrir/fermer les filtres -->
+        <div class="filters-toggle-row">
+          <button id="filtersToggle" class="btn btn-light filters-toggle" type="button">
+            ⚙️ Filtres & tri <span id="filtersToggleIcon">▼</span>
+          </button>
+        </div>
 
-          <div class="filter-card">
-            <div class="filter-title">📡 Opérateur</div>
-            <div class="chip-row">
-              <button class="chip chip-filter is-active" data-filter="operator" data-value="Tous">Tous</button>
-              <button class="chip chip-filter" data-filter="operator" data-value="Orange">Orange</button>
-              <button class="chip chip-filter" data-filter="operator" data-value="Free">Free</button>
-              <button class="chip chip-filter" data-filter="operator" data-value="Expresso">Expresso</button>
+        <!-- ✅ Panneau filtres (desktop = visible, mobile = repliable) -->
+        <div id="filtersPanel" class="filters-panel">
+          <div class="filters-grid">
+            <div class="filter-card">
+              <div class="filter-title">🎯 Ton usage</div>
+              <div class="chip-row">
+                <button class="chip chip-filter is-active" data-filter="usage" data-value="data">📱 Data</button>
+                <button class="chip chip-filter" data-filter="usage" data-value="mixte">🔄 Mixte</button>
+                <button class="chip chip-filter" data-filter="usage" data-value="appels">📞 Appels</button>
+              </div>
             </div>
-          </div>
 
-          <div class="filter-card">
-            <div class="filter-title">⏱ Validité</div>
-            <div class="chip-row">
-              <button class="chip chip-filter is-active" data-filter="validity" data-value="Toutes">Toutes</button>
-              <button class="chip chip-filter" data-filter="validity" data-value="24h">24h</button>
-              <button class="chip chip-filter" data-filter="validity" data-value="7 jours">7 jours</button>
-              <button class="chip chip-filter" data-filter="validity" data-value="30 jours">30 jours</button>
+            <div class="filter-card">
+              <div class="filter-title">📡 Opérateur</div>
+              <div class="chip-row">
+                <button class="chip chip-filter is-active" data-filter="operator" data-value="Tous">Tous</button>
+                <button class="chip chip-filter" data-filter="operator" data-value="Orange">Orange</button>
+                <button class="chip chip-filter" data-filter="operator" data-value="Free">Free</button>
+                <button class="chip chip-filter" data-filter="operator" data-value="Expresso">Expresso</button>
+              </div>
             </div>
-          </div>
 
-          <div class="wa-card">
-            <div class="wa-title">🟢 Recevoir les bons plans sur WhatsApp</div>
-            <div class="wa-sub">Gratuit. 1 message/jour max.</div>
-            <a id="waOpenBtn" class="btn btn-wa" href="#" rel="noopener noreferrer">Ouvrir WhatsApp</a>
+            <div class="filter-card">
+              <div class="filter-title">⏱ Validité</div>
+              <div class="chip-row">
+                <button class="chip chip-filter is-active" data-filter="validity" data-value="Toutes">Toutes</button>
+                <button class="chip chip-filter" data-filter="validity" data-value="24h">24h</button>
+                <button class="chip chip-filter" data-filter="validity" data-value="7 jours">7 jours</button>
+                <button class="chip chip-filter" data-filter="validity" data-value="30 jours">30 jours</button>
+              </div>
+            </div>
+
+            <div class="wa-card">
+              <div class="wa-title">🟢 Recevoir les bons plans sur WhatsApp</div>
+              <div class="wa-sub">Gratuit. 1 message/jour max.</div>
+              <a id="waOpenBtn" class="btn btn-wa" href="#" rel="noopener noreferrer">Ouvrir WhatsApp</a>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- BANNER TOP -->
       <div id="bestBanner" class="best-banner hidden">
-        <div class="best-title" id="bestTitle">🔥 Meilleure valeur</div>
+        <div class="best-title" id="bestTitle">🔥 Meilleur choix</div>
+        <div id="bestLine1" class="best-line"></div>
         <div class="best-gain-row">
+          <div id="bestUnit" class="best-unit hidden"></div>
           <div id="bestGain" class="best-gain hidden"></div>
-          <div id="bestSub" class="best-sub hidden"></div>
         </div>
-        <div id="bestReco" class="best-reco">✅ Recommandation neutre</div>
-        <div id="bestMeta" class="best-meta"></div>
       </div>
 
       <!-- EMPTY STATE -->
