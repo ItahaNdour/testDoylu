@@ -1,29 +1,32 @@
-/* Doylu V1 — script.js COMPLET (stable + mobile clean)
+/* Doylu V1 — script.js COMPLET (stable + UX mobile + dropdown filters)
    - Navigation hash (#accueil/#promos/#ussd/#contact/#admin)
-   - Budget: affiche uniquement [X ; X*1.2]
-   - Filtres: usage, opérateur, validité
-   - Tri + limite affichage (évite liste “catalogue”)
-   - Reco: 2 blocs (Meilleur Volume + Meilleure Durée)
-   - Gain dynamique (uniquement offres public, si comparables)
-   - Offres sous conditions séparées
+   - Budget crédible: afficher UNIQUEMENT les offres dans [X ; X*1.2]
+   - Filtres dropdown: usage, opérateur, validité, tri, affichage (Top 8/16/Tout)
+   - Recos compactes + gain (Go/Mo/min) recalculés dynamiquement (public only)
+   - Offres sous conditions séparées (student/corporate/special)
    - Admin: ajout/modif, liste, import/export JSON (localStorage)
 */
 
 (() => {
   "use strict";
 
+  /* =========================
+   * 0) CONFIG
+   * ========================= */
   const CONFIG = {
     operators: ["Orange", "Free", "Expresso"],
     validityMap: { "Toutes": null, "24h": 1, "7 jours": 7, "30 jours": 30 },
     adminPassword: "doylu2026",
     STORAGE_KEY: "doylu_offers_v1",
     WA_LINK: "https://wa.me/?text=",
-    budgetMaxFactor: 1.2, // ✅ X..X*1.2
+    budgetTolerance: 1.2, // ✅ X .. X*1.2
   };
 
+  /* =========================
+   * 1) HELPERS
+   * ========================= */
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
-
   const safe = (v) => (v == null ? "" : String(v));
   const clampInt = (v, fallback = 0) => {
     const n = Number.parseInt(String(v ?? "").replace(/[^\d]/g, ""), 10);
@@ -41,7 +44,8 @@
     if (!Number.isFinite(mb)) return "—";
     if (mb >= 1024) {
       const go = mbToGo(mb);
-      const s = go % 1 === 0 ? go.toFixed(0) : go.toFixed(1);
+      const rounded = Math.round(go * 10) / 10;
+      const s = rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toFixed(1);
       return `${s} Go`;
     }
     return `${Math.round(mb)} Mo`;
@@ -62,6 +66,9 @@
   };
   const closeModal = () => $("#modal").classList.add("hidden");
 
+  /* =========================
+   * 2) OFFERS STORAGE
+   * ========================= */
   const normalizeOffer = (o) => {
     const operator = safe(o.operator).trim();
     const usage = String(o.type_usage ?? "data").toLowerCase();
@@ -85,19 +92,23 @@
   };
 
   const defaultOffers = () => ([
+    // ORANGE (public)
     { operator: "Orange", name: "Pass USSD 3,5Go (24h)", price_fcfa: 700, type_usage: "data", data_mb: 3.5 * 1024, validity_days: 1, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
     { operator: "Orange", name: "Pass Jour 300Mo", price_fcfa: 200, type_usage: "data", data_mb: 300, validity_days: 1, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
     { operator: "Orange", name: "Pass Jour 1,5Go", price_fcfa: 500, type_usage: "data", data_mb: 1536, validity_days: 1, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
     { operator: "Orange", name: "Pass Jour 5Go", price_fcfa: 1000, type_usage: "data", data_mb: 5 * 1024, validity_days: 1, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
     { operator: "Orange", name: "Pass Nuit 5Go (23h-6h)", price_fcfa: 500, type_usage: "data", data_mb: 5 * 1024, validity_days: 1, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
 
+    // semaine
     { operator: "Orange", name: "Pass semaine 600Mo", price_fcfa: 500, type_usage: "data", data_mb: 600, validity_days: 7, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
     { operator: "Orange", name: "Pass semaine 2Go", price_fcfa: 1000, type_usage: "data", data_mb: 2 * 1024, validity_days: 7, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
 
+    // mois
     { operator: "Orange", name: "Pass Mois 12Go", price_fcfa: 3000, type_usage: "data", data_mb: 12 * 1024, validity_days: 30, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
     { operator: "Orange", name: "Pass Mois 25Go", price_fcfa: 5000, type_usage: "data", data_mb: 25 * 1024, validity_days: 30, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
     { operator: "Orange", name: "Promo 10Go (30 jours) exclusif OM", price_fcfa: 2000, type_usage: "data", data_mb: 10 * 1024, validity_days: 30, ussd_code: "#1234#", eligibility_type: "public", est_promo: true, source_badge: "Source SMS", status: "active" },
 
+    // sous conditions
     { operator: "Orange", name: "Pass Éducation 1Go", price_fcfa: 100, type_usage: "data", data_mb: 1024, validity_days: 7, ussd_code: "#1234#", eligibility_type: "student", source_badge: "Source SMS", status: "active" },
   ].map(normalizeOffer));
 
@@ -121,19 +132,25 @@
 
   let OFFERS = loadOffers();
 
+  /* =========================
+   * 3) STATE
+   * ========================= */
   const state = {
     route: "accueil",
     budgetX: 1000,
     usage: "data",
     operator: "Tous",
     validity: "Toutes",
-    promoOperator: "Tous",
     sort: "valeur",   // valeur|prix|volume|duree
-    limit: 8,         // 8|16|0
+    limit: 8,         // 8|16|0 (0 = tout)
+    promoOperator: "Tous",
     isAdmin: false,
     editingId: null,
   };
 
+  /* =========================
+   * 4) FILTERS / PIPELINE
+   * ========================= */
   const isActive = (o) => safe(o.status).toLowerCase() === "active";
   const isOperatorAllowed = (o) => CONFIG.operators.includes(o.operator);
 
@@ -151,32 +168,44 @@
     return o.validity_days <= maxDays;
   };
 
-  // ✅ Score “valeur”
-  const computeScore = (o, usage) => {
+  const filterByBudgetWindow = (list, x) => {
+    if (!Number.isFinite(x) || x <= 0) return [];
+    const min = x;
+    const max = Math.floor(x * CONFIG.budgetTolerance);
+    return list.filter((o) => Number.isFinite(o.price_fcfa) && o.price_fcfa >= min && o.price_fcfa <= max);
+  };
+
+  const scoreFor = (o, usage) => {
     if (!Number.isFinite(o.price_fcfa) || o.price_fcfa <= 0) return -Infinity;
+
     if (usage === "appels") {
       if (!Number.isFinite(o.minutes)) return -Infinity;
       return o.minutes / o.price_fcfa;
     }
+
     if (usage === "mixte") {
       if (Number.isFinite(o.data_mb)) return o.data_mb / o.price_fcfa;
       if (Number.isFinite(o.minutes)) return o.minutes / o.price_fcfa;
       return -Infinity;
     }
+
     if (!Number.isFinite(o.data_mb)) return -Infinity;
     return o.data_mb / o.price_fcfa;
   };
 
   const formatGainData = (gainMb) => {
     if (!Number.isFinite(gainMb) || gainMb <= 0) return null;
+
     if (gainMb < 1024) {
       const rounded = roundTo(gainMb, 50);
-      return `🔥 Tu as +${Math.max(50, rounded)} Mo`;
+      const v = Math.max(50, rounded);
+      return `🔥 Tu as +${v} Mo`;
     }
-    const gainGo = mbToGo(gainMb);
-    const roundedGo = roundTo(gainGo, 0.5);
-    const str = roundedGo % 1 === 0 ? roundedGo.toFixed(0) : roundedGo.toFixed(1);
-    return `🔥 Tu as +${str} Go`;
+
+    const go = mbToGo(gainMb);
+    const roundedGo = roundTo(go, 0.5);
+    const s = roundedGo % 1 === 0 ? roundedGo.toFixed(0) : roundedGo.toFixed(1);
+    return `🔥 Tu as +${s} Go`;
   };
 
   const formatGainMinutes = (gainMin) => {
@@ -214,8 +243,9 @@
     return { label, sub: "par rapport à la 2e meilleure offre publique" };
   };
 
-  const computeRecommendation = (o, usage) => {
+  const compactRecoBadge = (o, usage) => {
     if (!o) return "Basé sur ton budget et ton usage";
+
     const days = Number.isFinite(o.validity_days) ? o.validity_days : null;
 
     if (usage === "appels") {
@@ -230,51 +260,46 @@
     return "Basé sur ton budget et ton usage";
   };
 
-  // ✅ Budget: [X ; X*1.2]
-  const filterByBudgetRange = (list, x) => {
-    if (!Number.isFinite(x) || x <= 0) return [];
-    const min = x;
-    const max = Math.floor(x * CONFIG.budgetMaxFactor);
-    return list.filter((o) => Number.isFinite(o.price_fcfa) && o.price_fcfa >= min && o.price_fcfa <= max);
-  };
-
-  const pickBestVolume = (offers) => {
-    if (!offers.length) return null;
-    if (state.usage === "appels") {
-      const withMin = offers.filter(o => Number.isFinite(o.minutes));
-      return withMin.sort((a,b) => (b.minutes ?? -1) - (a.minutes ?? -1))[0] || null;
-    }
-    // data/mixte: priorité data
-    const withData = offers.filter(o => Number.isFinite(o.data_mb));
-    if (withData.length) return withData.sort((a,b)=> (b.data_mb ?? -1) - (a.data_mb ?? -1))[0] || null;
-    const withMin = offers.filter(o => Number.isFinite(o.minutes));
-    return withMin.sort((a,b)=> (b.minutes ?? -1) - (a.minutes ?? -1))[0] || null;
-  };
-
-  const pickBestDuration = (offers) => {
-    const withDays = offers.filter(o => Number.isFinite(o.validity_days));
-    if (!withDays.length) return null;
-    return withDays.sort((a,b)=> (b.validity_days ?? -1) - (a.validity_days ?? -1))[0] || null;
-  };
-
-  const sortOffers = (offers) => {
-    const s = state.sort;
-
-    if (s === "prix") return offers.slice().sort((a,b)=> a.price_fcfa - b.price_fcfa);
-    if (s === "duree") return offers.slice().sort((a,b)=> (b.validity_days ?? -1) - (a.validity_days ?? -1));
-
-    if (s === "volume") {
-      if (state.usage === "appels") {
-        return offers.slice().sort((a,b)=> (b.minutes ?? -1) - (a.minutes ?? -1));
+  const pickBestBy = (arr, getVal) => {
+    let best = null;
+    let bestV = -Infinity;
+    for (const o of arr) {
+      const v = getVal(o);
+      if (Number.isFinite(v) && v > bestV) {
+        bestV = v;
+        best = o;
       }
-      return offers.slice().sort((a,b)=> (b.data_mb ?? -1) - (a.data_mb ?? -1));
     }
+    return best;
+  };
 
-    // valeur (default)
-    return offers
-      .map((o) => ({ o, score: computeScore(o, state.usage) }))
-      .sort((a,b)=> b.score - a.score)
-      .map((x)=> x.o);
+  const sortOffers = (arr) => {
+    const usage = state.usage;
+
+    const byPrice = (a, b) => (a.price_fcfa ?? 0) - (b.price_fcfa ?? 0);
+
+    const byDuration = (a, b) => (b.validity_days ?? -1) - (a.validity_days ?? -1);
+
+    const byVolume = (a, b) => {
+      const va =
+        usage === "appels" ? (a.minutes ?? -1) :
+        usage === "mixte" ? (Number.isFinite(a.data_mb) ? a.data_mb : (a.minutes ?? -1)) :
+        (a.data_mb ?? -1);
+
+      const vb =
+        usage === "appels" ? (b.minutes ?? -1) :
+        usage === "mixte" ? (Number.isFinite(b.data_mb) ? b.data_mb : (b.minutes ?? -1)) :
+        (b.data_mb ?? -1);
+
+      return vb - va;
+    };
+
+    const byValue = (a, b) => scoreFor(b, usage) - scoreFor(a, usage);
+
+    if (state.sort === "prix") return arr.slice().sort(byPrice);
+    if (state.sort === "volume") return arr.slice().sort(byVolume);
+    if (state.sort === "duree") return arr.slice().sort(byDuration);
+    return arr.slice().sort(byValue);
   };
 
   const pipeline = () => {
@@ -285,9 +310,8 @@
       .filter(isActive)
       .filter(isOperatorAllowed);
 
-    // 1) Budget range
-    list = filterByBudgetRange(list, x);
-    if (!list.length) return { list: [], publicOffers: [], specialOffers: [], sortedPublic: [], top1: null, top2: null, gain: null, bestVolume: null, bestDuration: null };
+    // 1) Budget window (X .. X*1.2)
+    list = filterByBudgetWindow(list, x);
 
     // 2) Operator
     if (state.operator !== "Tous") list = list.filter((o) => o.operator === state.operator);
@@ -301,40 +325,70 @@
     const publicOffers = list.filter((o) => o.eligibility_type === "public");
     const specialOffers = list.filter((o) => o.eligibility_type !== "public");
 
-    // Tri principal sur public
-    const sortedPublicAll = sortOffers(publicOffers);
+    // Public sorted for display
+    const sortedPublic = sortOffers(publicOffers);
 
-    const top1 = sortedPublicAll[0] || null;
-    const top2 = sortedPublicAll[1] || null;
+    // Top1/top2 for gain must be on "value" ranking (score), not UI sort
+    const scored = publicOffers
+      .map((o) => ({ o, score: scoreFor(o, state.usage) }))
+      .filter((x) => Number.isFinite(x.score) && x.score > -Infinity)
+      .sort((a, b) => b.score - a.score)
+      .map((x) => x.o);
+
+    const top1 = scored[0] || null;
+    const top2 = scored[1] || null;
     const gain = top1 && top2 ? computeGain(top1, top2, state.usage) : null;
 
-    // 2 recommandations (volume + durée)
-    const bestVolume = pickBestVolume(publicOffers);
-    const bestDuration = pickBestDuration(publicOffers);
+    // double recommendation (best volume + best duration) from filtered PUBLIC set
+    const bestVolume =
+      state.usage === "appels"
+        ? pickBestBy(publicOffers, (o) => o.minutes ?? -Infinity)
+        : state.usage === "mixte"
+          ? pickBestBy(publicOffers, (o) => (Number.isFinite(o.data_mb) ? o.data_mb : (o.minutes ?? -Infinity)))
+          : pickBestBy(publicOffers, (o) => o.data_mb ?? -Infinity);
 
-    // Limite affichage
-    const limitedPublic = (state.limit && Number(state.limit) > 0)
-      ? sortedPublicAll.slice(0, Number(state.limit))
-      : sortedPublicAll;
+    const bestDuration = pickBestBy(publicOffers, (o) => o.validity_days ?? -Infinity);
 
-    return { list, publicOffers, specialOffers, sortedPublic: limitedPublic, top1, top2, gain, bestVolume, bestDuration };
+    return {
+      list,
+      publicOffers,
+      specialOffers,
+      sortedPublic,
+      top1,
+      top2,
+      gain,
+      bestVolume,
+      bestDuration,
+    };
   };
 
+  /* =========================
+   * 5) RENDER
+   * ========================= */
   const renderOfferCard = (o, { isTop = false } = {}) => {
     const badgeTop = isTop ? `<div class="pill pill-top">🏆 Meilleur</div>` : "";
     const badgeSource = `<div class="pill pill-info">${safe(o.source_badge || "Source SMS")}</div>`;
     const badgePromo = o.est_promo ? `<div class="pill pill-warning">Promo</div>` : "";
 
+    const usage = state.usage;
     let metaLine = "";
-    if (state.usage === "appels") {
+
+    if (usage === "appels") {
       metaLine = `📞 ${Number.isFinite(o.minutes) ? `${Math.round(o.minutes)} min` : "—"} • ⏱ ${Number.isFinite(o.validity_days) ? `${o.validity_days} jour(s)` : "Inconnu"}`;
+    } else if (usage === "mixte") {
+      const dataPart = Number.isFinite(o.data_mb) ? `📱 ${formatData(o.data_mb)}` : "";
+      const callPart = Number.isFinite(o.minutes) ? `📞 ${Math.round(o.minutes)} min` : "";
+      const both = [dataPart, callPart].filter(Boolean).join(" • ");
+      metaLine = `${both || "—"} • ⏱ ${Number.isFinite(o.validity_days) ? `${o.validity_days} jour(s)` : "Inconnu"}`;
     } else {
       metaLine = `📱 ${Number.isFinite(o.data_mb) ? formatData(o.data_mb) : "—"} • ⏱ ${Number.isFinite(o.validity_days) ? `${o.validity_days} jour(s)` : "Inconnu"}`;
     }
 
-    const ussdHtml = o.ussd_code
-      ? `<div class="ussd hidden" data-ussd-wrap="${o.offer_id}"><code>${o.ussd_code}</code></div>`
-      : `<div class="ussd hidden" data-ussd-wrap="${o.offer_id}"><code>—</code></div>`;
+    const ussdHtml = `
+      <div class="ussd hidden" data-ussd-wrap="${o.offer_id}">
+        <code>${o.ussd_code ? o.ussd_code : "—"}</code>
+      </div>
+    `;
 
     const shareText = encodeURIComponent(`Doylu — ${o.operator} • ${o.name} • ${formatFcfa(o.price_fcfa)} • ${metaLine} • Code: ${o.ussd_code || "—"}`);
     const waHref = `${CONFIG.WA_LINK}${shareText}`;
@@ -410,54 +464,112 @@
     `;
   };
 
-  const renderBestBanner = ({ top1, gain, list, bestVolume, bestDuration }) => {
+  const renderBestBanner = ({ list, publicOffers, gain, bestVolume, bestDuration }) => {
     const banner = $("#bestBanner");
+    const bestTitle = $("#bestTitle");
+    const bestGain = $("#bestGain");
+    const bestSub = $("#bestSub");
+    const bestMeta = $("#bestMeta");
+    const bestReco = $("#bestReco");
+
     if (!banner) return;
 
-    if (!top1) {
+    if (!list.length) {
       banner.classList.add("hidden");
       return;
     }
 
     banner.classList.remove("hidden");
+    bestTitle.textContent = `🔥 Recommandations pour ${formatFcfa(state.budgetX)}`;
 
-    $("#bestTitle").textContent = `🔥 Recommandations pour ${formatFcfa(state.budgetX)}`;
-
+    // Gain (only if >=2 public comparable)
     if (gain?.label) {
-      $("#bestGain").textContent = gain.label;
-      $("#bestGain").classList.remove("hidden");
-      $("#bestSub").textContent = gain.sub || "";
-      $("#bestSub").classList.remove("hidden");
+      bestGain.textContent = gain.label;
+      bestGain.classList.remove("hidden");
+      bestSub.textContent = gain.sub || "";
+      bestSub.classList.remove("hidden");
     } else {
-      $("#bestGain").classList.add("hidden");
-      $("#bestSub").classList.add("hidden");
+      bestGain.classList.add("hidden");
+      bestSub.classList.add("hidden");
     }
 
-    $("#bestReco").textContent = `✅ ${computeRecommendation(top1, state.usage)}`;
+    // Badge
+    bestReco.textContent = `✅ ${compactRecoBadge(bestVolume || bestDuration, state.usage)}`;
 
-    const min = state.budgetX;
-    const max = Math.floor(state.budgetX * CONFIG.budgetMaxFactor);
-    $("#bestMeta").textContent = `${list.length} offre(s) • Budget: ${formatFcfa(min)} → ${formatFcfa(max)} • Tri: ${state.sort}`;
-
-    const bestDataLine = $("#bestDataLine");
-    const bestDurationLine = $("#bestDurationLine");
+    // Compact meta lines (not too verbose)
+    const lines = [];
 
     const volumeLabel =
       state.usage === "appels"
-        ? (bestVolume && Number.isFinite(bestVolume.minutes) ? `${Math.round(bestVolume.minutes)} min` : "—")
-        : (bestVolume && Number.isFinite(bestVolume.data_mb) ? formatData(bestVolume.data_mb) : "—");
+        ? (o) => `📞 ${Number.isFinite(o.minutes) ? `${Math.round(o.minutes)} min` : "—"}`
+        : state.usage === "mixte"
+          ? (o) => {
+              const parts = [];
+              if (Number.isFinite(o.data_mb)) parts.push(`📱 ${formatData(o.data_mb)}`);
+              if (Number.isFinite(o.minutes)) parts.push(`📞 ${Math.round(o.minutes)} min`);
+              return parts.join(" • ") || "—";
+            }
+          : (o) => `📱 ${Number.isFinite(o.data_mb) ? formatData(o.data_mb) : "—"}`;
 
-    if (bestDataLine) {
-      bestDataLine.textContent = bestVolume
-        ? `🏆 Meilleur Volume : ${bestVolume.operator} — ${bestVolume.name} (${volumeLabel})`
-        : "";
+    if (bestVolume) lines.push(`🏆 Meilleur ${state.usage === "appels" ? "Appels" : "Volume"} : ${bestVolume.operator} — ${bestVolume.name} (${volumeLabel(bestVolume)})`);
+    if (bestDuration) lines.push(`⏳ Meilleure durée : ${bestDuration.operator} — ${bestDuration.name} (⏱ ${Number.isFinite(bestDuration.validity_days) ? `${bestDuration.validity_days} jour(s)` : "Inconnu"})`);
+
+    lines.push(`${publicOffers.length} offre(s) publiques trouvée(s) • ${list.length} total`);
+
+    bestMeta.innerHTML = lines.map((s) => `<div>${s}</div>`).join("");
+  };
+
+  const renderResults = () => {
+    const { list, publicOffers, specialOffers, sortedPublic, gain, bestVolume, bestDuration } = pipeline();
+
+    // count
+    const countEl = $("#offersCount");
+    if (countEl) countEl.textContent = `${list.length} offre(s)`;
+
+    // empty state
+    const empty = $("#noResults");
+    if (empty) {
+      if (!list.length) {
+        empty.classList.remove("hidden");
+        empty.textContent = `Aucune offre entre ${formatFcfa(state.budgetX)} et ${formatFcfa(Math.floor(state.budgetX * CONFIG.budgetTolerance))}. Essaie un autre montant.`;
+      } else {
+        empty.classList.add("hidden");
+      }
     }
 
-    if (bestDurationLine) {
-      bestDurationLine.textContent = bestDuration
-        ? `⏳ Meilleure Durée : ${bestDuration.operator} — ${bestDuration.name} (${bestDuration.validity_days} jour(s))`
-        : "";
+    renderBestBanner({ list, publicOffers, gain, bestVolume, bestDuration });
+
+    // title
+    const resultsTitle = $("#resultsTitle");
+    if (resultsTitle) {
+      if (!list.length) resultsTitle.textContent = `Résultats`;
+      else resultsTitle.textContent = `Résultats : ${list.length} offre(s) entre ${formatFcfa(state.budgetX)} et ${formatFcfa(Math.floor(state.budgetX * CONFIG.budgetTolerance))}`;
     }
+
+    // main grid = public only
+    const grid = $("#offersGrid");
+    if (grid) {
+      const limited =
+        state.limit && Number(state.limit) > 0 ? sortedPublic.slice(0, Number(state.limit)) : sortedPublic;
+
+      grid.innerHTML = limited
+        .map((o, idx) => renderOfferCard(o, { isTop: idx === 0 }))
+        .join("");
+    }
+
+    // specials
+    const wrap = $("#specialOffersWrap");
+    const sgrid = $("#specialOffersGrid");
+    if (wrap && sgrid) {
+      if (!specialOffers.length) {
+        wrap.classList.add("hidden");
+      } else {
+        wrap.classList.remove("hidden");
+        sgrid.innerHTML = specialOffers.map(renderSpecialCard).join("");
+      }
+    }
+
+    renderPromos();
   };
 
   const renderPromos = () => {
@@ -483,59 +595,9 @@
     grid.innerHTML = promos.map((o) => renderOfferCard(o, { isTop: false })).join("");
   };
 
-  const renderResults = () => {
-    const { list, specialOffers, sortedPublic, top1, gain, bestVolume, bestDuration } = pipeline();
-
-    // count
-    const countEl = $("#offersCount");
-    if (countEl) countEl.textContent = `${list.length} offre(s)`;
-
-    // empty
-    const empty = $("#noResults");
-    if (empty) {
-      if (!list.length) {
-        empty.classList.remove("hidden");
-        empty.textContent = `Aucune offre pour ${formatFcfa(state.budgetX)}. Essaie 2000 ou 5000 FCFA.`;
-      } else {
-        empty.classList.add("hidden");
-      }
-    }
-
-    renderBestBanner({ top1, gain, list, bestVolume, bestDuration });
-
-    // title (✅ plus “proches”)
-    const resultsTitle = $("#resultsTitle");
-    if (resultsTitle) {
-      const min = state.budgetX;
-      const max = Math.floor(state.budgetX * CONFIG.budgetMaxFactor);
-      resultsTitle.textContent = `Résultats : ${list.length} offre(s) (${formatFcfa(min)} → ${formatFcfa(max)})`;
-    }
-
-    // main grid = public triées + limitées
-    const grid = $("#offersGrid");
-    if (grid) {
-      const html = sortedPublic
-        .map((o, idx) => renderOfferCard(o, { isTop: idx === 0 }))
-        .join("");
-      grid.innerHTML = html || "";
-    }
-
-    // specials
-    const wrap = $("#specialOffersWrap");
-    const sgrid = $("#specialOffersGrid");
-    if (wrap && sgrid) {
-      if (!specialOffers.length) {
-        wrap.classList.add("hidden");
-      } else {
-        wrap.classList.remove("hidden");
-        sgrid.innerHTML = specialOffers.map(renderSpecialCard).join("");
-      }
-    }
-
-    renderPromos();
-  };
-
-  /* ROUTER */
+  /* =========================
+   * 6) ROUTER
+   * ========================= */
   const views = ["accueil", "promos", "ussd", "contact", "admin"];
 
   const showRoute = (route) => {
@@ -548,11 +610,13 @@
       el.classList.toggle("hidden", v !== r);
     });
 
+    // active nav
     $$(".nav-link").forEach((a) => {
       const is = a.getAttribute("data-route") === r;
       a.style.textDecoration = is ? "underline" : "none";
     });
 
+    // close mobile nav
     $("#mobileNav")?.classList.add("hidden");
     $("#menuBtn")?.setAttribute("aria-expanded", "false");
 
@@ -566,12 +630,9 @@
     showRoute(h);
   };
 
-  const setActiveChips = (filter, value) => {
-    $$(`.chip-filter[data-filter="${filter}"]`).forEach((btn) => {
-      btn.classList.toggle("is-active", btn.getAttribute("data-value") === String(value));
-    });
-  };
-
+  /* =========================
+   * 7) UI EVENTS
+   * ========================= */
   const setActiveBudgetChips = (budget) => {
     $$(".chip-budget").forEach((btn) => {
       btn.classList.toggle("is-active", clampInt(btn.getAttribute("data-budget"), 0) === budget);
@@ -580,14 +641,74 @@
 
   const applyBudget = (x) => {
     const budget = Math.max(0, clampInt(x, 0));
-    state.budgetX = budget || 0;
-    $("#budgetInput").value = budget ? String(budget) : "";
+    if (!budget) return;
+
+    state.budgetX = budget;
+    $("#budgetInput").value = String(budget);
     setActiveBudgetChips(budget);
     renderResults();
     $("#bestBanner")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const bindFilters = () => {
+    const usage = $("#usageSelect");
+    const op = $("#operatorSelect");
+    const val = $("#validitySelect");
+    const sort = $("#sortSelect");
+    const lim = $("#limitSelect");
+    const promoOp = $("#promoOperatorSelect");
+
+    if (usage) {
+      usage.value = state.usage;
+      usage.addEventListener("change", () => {
+        state.usage = usage.value;
+        renderResults();
+      });
+    }
+
+    if (op) {
+      op.value = state.operator;
+      op.addEventListener("change", () => {
+        state.operator = op.value;
+        renderResults();
+      });
+    }
+
+    if (val) {
+      val.value = state.validity;
+      val.addEventListener("change", () => {
+        state.validity = val.value;
+        renderResults();
+      });
+    }
+
+    if (sort) {
+      sort.value = state.sort;
+      sort.addEventListener("change", () => {
+        state.sort = sort.value;
+        renderResults();
+      });
+    }
+
+    if (lim) {
+      lim.value = String(state.limit);
+      lim.addEventListener("change", () => {
+        state.limit = Number(lim.value);
+        renderResults();
+      });
+    }
+
+    if (promoOp) {
+      promoOp.value = state.promoOperator;
+      promoOp.addEventListener("change", () => {
+        state.promoOperator = promoOp.value;
+        renderPromos();
+      });
+    }
+  };
+
   const bindEvents = () => {
+    // menu
     $("#menuBtn")?.addEventListener("click", () => {
       const mobile = $("#mobileNav");
       const expanded = $("#menuBtn").getAttribute("aria-expanded") === "true";
@@ -595,6 +716,7 @@
       mobile?.classList.toggle("hidden");
     });
 
+    // nav click (close mobile)
     document.addEventListener("click", (e) => {
       const a = e.target.closest(".nav-link");
       if (!a) return;
@@ -602,75 +724,51 @@
       $("#menuBtn")?.setAttribute("aria-expanded", "false");
     });
 
+    // filters toggle
+    $("#filtersToggle")?.addEventListener("click", () => {
+      const panel = $("#filtersPanel");
+      const btn = $("#filtersToggle");
+      const expanded = btn.getAttribute("aria-expanded") === "true";
+      btn.setAttribute("aria-expanded", String(!expanded));
+      panel.classList.toggle("hidden", expanded);
+    });
+
+    // budget submit
     $("#budgetSubmit")?.addEventListener("click", () => applyBudget($("#budgetInput").value));
     $("#budgetInput")?.addEventListener("keydown", (e) => {
       if (e.key === "Enter") applyBudget($("#budgetInput").value);
     });
 
+    // quick budgets
     $$(".chip-budget").forEach((btn) => {
       btn.addEventListener("click", () => applyBudget(btn.getAttribute("data-budget")));
     });
 
-    document.addEventListener("click", (e) => {
-      const btn = e.target.closest(".chip-filter");
-      if (!btn) return;
-
-      const filter = btn.getAttribute("data-filter");
-      const value = btn.getAttribute("data-value");
-
-      if (filter === "usage") {
-        state.usage = value;
-        setActiveChips("usage", value);
-        renderResults();
-      }
-      if (filter === "operator") {
-        state.operator = value;
-        setActiveChips("operator", value);
-        renderResults();
-      }
-      if (filter === "validity") {
-        state.validity = value;
-        setActiveChips("validity", value);
-        renderResults();
-      }
-      if (filter === "promoOperator") {
-        state.promoOperator = value;
-        setActiveChips("promoOperator", value);
-        renderPromos();
-      }
-      if (filter === "sort") {
-        state.sort = value;
-        setActiveChips("sort", value);
-        renderResults();
-      }
-      if (filter === "limit") {
-        state.limit = Number(value);
-        setActiveChips("limit", value);
-        renderResults();
-      }
-    });
-
+    // how verify modal
     const verifyHtml = `
       <ul>
         <li>On collecte des offres reçues par SMS/USSD et des annonces publiques.</li>
         <li>On vérifie la cohérence (prix, volume, validité) et on retire les offres expirées.</li>
-        <li>Les offres “sous conditions” restent visibles mais ne dominent jamais les recommandations.</li>
+        <li>Les offres “sous conditions” restent visibles mais ne dominent pas les recommandations.</li>
       </ul>
     `;
     $("#howVerifyBtn")?.addEventListener("click", () => openModal("Comment on vérifie ?", verifyHtml));
     $("#sourcesInfoBtn")?.addEventListener("click", () => openModal("Comment on vérifie ?", verifyHtml));
 
+    // modal close
     $("#modalClose")?.addEventListener("click", closeModal);
     $("#modal")?.addEventListener("click", (e) => {
       if (e.target.id === "modal") closeModal();
     });
 
+    // WhatsApp main button
     $("#waOpenBtn")?.addEventListener("click", (e) => {
       e.preventDefault();
       const txt = encodeURIComponent("Je veux recevoir les bons plans Doylu sur WhatsApp 🙌");
       window.open(`${CONFIG.WA_LINK}${txt}`, "_blank", "noopener,noreferrer");
     });
 
+    // Offer actions (reveal/copy) delegation
     document.addEventListener("click", async (e) => {
       const actionBtn = e.target.closest("[data-action]");
       if (!actionBtn) return;
@@ -704,6 +802,7 @@
       }
     });
 
+    // contact dummy sends
     $("#contactSend")?.addEventListener("click", () => {
       $("#contactToast").textContent = "✅ Merci ! Message enregistré (V1).";
       setTimeout(() => ($("#contactToast").textContent = ""), 2000);
@@ -717,6 +816,7 @@
       setTimeout(() => ($("#partnerToast").textContent = ""), 2000);
     });
 
+    // admin login
     $("#adminLogin")?.addEventListener("click", () => {
       const pass = $("#adminPass")?.value || "";
       if (pass === CONFIG.adminPassword) {
@@ -729,7 +829,9 @@
     });
   };
 
-  /* ADMIN */
+  /* =========================
+   * 8) ADMIN (identique à votre version)
+   * ========================= */
   const renderAdmin = () => {
     const gate = $("#adminGate");
     const panel = $("#adminPanel");
@@ -904,25 +1006,34 @@
     };
   };
 
+  /* =========================
+   * 9) INIT
+   * ========================= */
   const init = () => {
-    $("#year").textContent = String(new Date().getFullYear());
+    const year = $("#year");
+    if (year) year.textContent = String(new Date().getFullYear());
+
     $("#lastUpdate").textContent = `Dernière MAJ : aujourd'hui ${nowHHMM()}`;
 
+    // default budget
     $("#budgetInput").value = String(state.budgetX);
     setActiveBudgetChips(state.budgetX);
 
-    setActiveChips("usage", "data");
-    setActiveChips("operator", "Tous");
-    setActiveChips("validity", "Toutes");
-    setActiveChips("promoOperator", "Tous");
-    setActiveChips("sort", "valeur");
-    setActiveChips("limit", "8");
+    // dropdown defaults
+    bindFilters();
 
+    // filters panel default state (mobile: hidden)
+    const panel = $("#filtersPanel");
+    if (panel) panel.classList.add("hidden");
+
+    // events
     bindEvents();
 
+    // routes
     window.addEventListener("hashchange", handleHash);
     handleHash();
 
+    // initial render
     renderResults();
     renderPromos();
   };
