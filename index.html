@@ -38,138 +38,53 @@
     <!-- ACCUEIL -->
     <section id="view-accueil" class="view">
       <div class="hero">
-        <h1>Avant d’acheter ton pass, vérifie ici.</h1>
-        <p class="subtitle">Compare les offres selon ton budget. <strong>Données vérifiées</strong>, prêtes à copier.</p>
+        <div class="hero-surface">
+          <h1>Avant d’acheter ton pass, vérifie ici.</h1>
+          <p class="subtitle">Compare les offres selon ton budget. <strong>Données vérifiées</strong>, prêtes à copier.</p>
 
-        <div class="card hero-card">
-          <div class="budget-row">
-            <div class="budget-left">
-              <div class="label-row">
-                <div class="label">💰 Ton budget (FCFA)</div>
+          <div class="card hero-card">
+            <div class="budget-row">
+              <div class="budget-left">
+                <div class="label-row">
+                  <div class="label">💰 Ton budget (FCFA)</div>
+                </div>
+
+                <div class="budget-input-row">
+                  <input id="budgetInput" type="number" inputmode="numeric" placeholder="Ex: 1500" />
+                  <button id="budgetSubmit" class="btn btn-cta">Voir les offres</button>
+                </div>
+
+                <div class="quick-budgets">
+                  <button class="chip chip-budget" data-budget="500">500</button>
+                  <button class="chip chip-budget" data-budget="1000">1000</button>
+                  <button class="chip chip-budget" data-budget="2000">2000</button>
+                  <button class="chip chip-budget" data-budget="3000">3000</button>
+                  <button class="chip chip-budget" data-budget="5000">5000</button>
+                </div>
               </div>
 
-              <div class="budget-input-row">
-                <input id="budgetInput" type="number" inputmode="numeric" placeholder="Ex: 1500" />
-                <button id="budgetSubmit" class="btn btn-cta">Voir les offres</button>
-              </div>
-
-              <div class="quick-budgets">
-                <button class="chip chip-budget" data-budget="500">500</button>
-                <button class="chip chip-budget" data-budget="1000">1000</button>
-                <button class="chip chip-budget" data-budget="2000">2000</button>
-                <button class="chip chip-budget" data-budget="3000">3000</button>
-                <button class="chip chip-budget" data-budget="5000">5000</button>
+              <div class="budget-right">
+                <div class="mini-meta">
+                  <span id="offersCount" class="muted">0 offre(s)</span>
+                </div>
               </div>
             </div>
 
-            <div class="budget-right">
-              <div class="mini-meta">
-                <span id="offersCount" class="muted">0 offre(s)</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="trust-row">
-            <div class="pill">🔒 Vérifiées SMS/USSD</div>
-            <div class="pill">⚖️ Site indépendant</div>
-            <div id="lastUpdate" class="pill">Dernière MAJ : —</div>
-            <button id="howVerifyBtn" class="link-btn" type="button">Comment on vérifie ?</button>
-          </div>
-        </div>
-
-        <!-- FILTERS: dropdown compact -->
-        <div class="filters-wrap">
-          <button id="filtersToggle" class="filters-toggle" type="button" aria-expanded="false">
-            ⚙️ Filtres & tri
-            <span class="muted">Afficher / Masquer</span>
-          </button>
-
-          <div id="filtersPanel" class="filters-panel">
-            <div class="filters-grid">
-              <div class="filter-card">
-                <div class="filter-title">🎯 Ton usage</div>
-                <label class="select-row">
-                  <span class="muted">Usage</span>
-                  <select id="usageSelect">
-                    <option value="data">📱 Data</option>
-                    <option value="mixte">🔄 Mixte</option>
-                    <option value="appels">📞 Appels</option>
-                  </select>
-                </label>
-              </div>
-
-              <div class="filter-card">
-                <div class="filter-title">📡 Opérateur</div>
-                <label class="select-row">
-                  <span class="muted">Opérateur</span>
-                  <select id="operatorSelect">
-                    <option value="Tous">Tous</option>
-                    <option value="Orange">Orange</option>
-                    <option value="Free">Free</option>
-                    <option value="Expresso">Expresso</option>
-                  </select>
-                </label>
-              </div>
-
-              <div class="filter-card">
-                <div class="filter-title">⏱ Validité</div>
-                <label class="select-row">
-                  <span class="muted">Validité</span>
-                  <select id="validitySelect">
-                    <option value="Toutes">Toutes</option>
-                    <option value="24h">24h</option>
-                    <option value="7 jours">7 jours</option>
-                    <option value="30 jours">30 jours</option>
-                  </select>
-                </label>
-              </div>
-
-              <div class="filter-card">
-                <div class="filter-title">↕️ Trier</div>
-                <label class="select-row">
-                  <span class="muted">Tri</span>
-                  <select id="sortSelect">
-                    <option value="valeur">Valeur</option>
-                    <option value="prix">Prix</option>
-                    <option value="volume">Volume</option>
-                    <option value="duree">Durée</option>
-                  </select>
-                </label>
-              </div>
-
-              <div class="filter-card">
-                <div class="filter-title">📌 Afficher</div>
-                <label class="select-row">
-                  <span class="muted">Nombre</span>
-                  <select id="limitSelect">
-                    <option value="8">Top 8</option>
-                    <option value="16">Top 16</option>
-                    <option value="0">Tout</option>
-                  </select>
-                </label>
-              </div>
-
-              <div class="wa-card">
-                <div class="wa-title">🟢 Recevoir les bons plans sur WhatsApp</div>
-                <div class="wa-sub">Gratuit. 1 message/jour max.</div>
-                <a id="waOpenBtn" class="btn btn-wa" href="#" rel="noopener noreferrer">Ouvrir WhatsApp</a>
-              </div>
+            <div class="trust-row">
+              <div class="pill">🔒 Vérifiées SMS/USSD</div>
+              <div class="pill">⚖️ Site indépendant</div>
+              <div id="lastUpdate" class="pill">Dernière MAJ : —</div>
+              <button id="howVerifyBtn" class="link-btn" type="button">Comment on vérifie ?</button>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- BANNER TOP (compact) -->
+      <!-- RECO COMPACTE -->
       <div id="bestBanner" class="best-banner hidden">
-        <div class="best-title" id="bestTitle">🔥 Recommandations</div>
-
-        <div class="best-gain-row">
-          <div id="bestGain" class="best-gain hidden"></div>
-          <div id="bestSub" class="best-sub hidden"></div>
-        </div>
-
-        <div id="bestReco" class="best-reco">✅ Basé sur ton budget et ton usage</div>
-
+        <div class="best-title" id="bestTitle">🔥 Meilleure option</div>
+        <div id="bestGain" class="best-gain hidden"></div>
+        <div id="bestSub" class="best-sub hidden"></div>
         <div id="bestMeta" class="best-meta"></div>
       </div>
 
@@ -189,9 +104,88 @@
         <div id="specialOffersGrid" class="grid"></div>
       </section>
 
+      <!-- WhatsApp (déplacé en bas, discret) -->
+      <section class="wa-bottom">
+        <div class="wa-mini">
+          <div class="wa-mini-left">
+            <div class="wa-mini-title">🟢 Bons plans WhatsApp</div>
+            <div class="wa-mini-sub muted">Gratuit • 1 message/jour max</div>
+          </div>
+          <a id="waOpenBtn" class="btn btn-wa" href="#" rel="noopener noreferrer">Ouvrir</a>
+        </div>
+      </section>
+
       <div class="habit">
         Beaucoup prennent le même forfait par habitude. <strong>Vérifie toujours avant d’acheter.</strong>
       </div>
+
+      <!-- BOUTON FLOTTANT FILTRES (mobile & desktop) -->
+      <button id="filtersFab" class="filters-fab" type="button" aria-haspopup="dialog" aria-expanded="false">
+        ⚙️ Filtres
+      </button>
+
+      <!-- BOTTOM SHEET FILTRES -->
+      <div id="sheetBackdrop" class="sheet-backdrop hidden" aria-hidden="true"></div>
+
+      <section id="filtersSheet" class="sheet hidden" role="dialog" aria-label="Filtres & tri" aria-modal="true">
+        <div class="sheet-head">
+          <div class="sheet-title">⚙️ Filtres & tri</div>
+          <button id="sheetClose" class="icon-btn" aria-label="Fermer">✕</button>
+        </div>
+
+        <div class="sheet-body">
+          <label class="select-row">
+            <span class="muted">Usage</span>
+            <select id="usageSelect">
+              <option value="data">📱 Data</option>
+              <option value="mixte">🔄 Mixte</option>
+              <option value="appels">📞 Appels</option>
+            </select>
+          </label>
+
+          <label class="select-row">
+            <span class="muted">Opérateur</span>
+            <select id="operatorSelect">
+              <option value="Tous">Tous</option>
+              <option value="Orange">Orange</option>
+              <option value="Free">Free</option>
+              <option value="Expresso">Expresso</option>
+            </select>
+          </label>
+
+          <label class="select-row">
+            <span class="muted">Validité</span>
+            <select id="validitySelect">
+              <option value="Toutes">Toutes</option>
+              <option value="24h">24h</option>
+              <option value="7 jours">7 jours</option>
+              <option value="30 jours">30 jours</option>
+            </select>
+          </label>
+
+          <label class="select-row">
+            <span class="muted">Trier</span>
+            <select id="sortSelect">
+              <option value="valeur">Valeur</option>
+              <option value="prix">Prix</option>
+              <option value="volume">Volume</option>
+              <option value="duree">Durée</option>
+            </select>
+          </label>
+
+          <label class="select-row">
+            <span class="muted">Afficher</span>
+            <select id="limitSelect">
+              <option value="8">Top 8</option>
+              <option value="16">Top 16</option>
+              <option value="0">Tout</option>
+            </select>
+          </label>
+
+          <button id="applyFiltersBtn" class="btn btn-cta sheet-apply" type="button">Appliquer</button>
+          <div class="muted sheet-hint">Les offres et le gain se recalculent automatiquement.</div>
+        </div>
+      </section>
     </section>
 
     <!-- PROMOS -->
