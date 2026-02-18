@@ -77,85 +77,100 @@
           </div>
         </div>
 
-        <!-- ✅ Filtres pliables sur mobile -->
-        <details class="filters-details" open>
-          <summary class="filters-summary">⚙️ Filtres & tri</summary>
+        <!-- FILTERS: dropdown compact -->
+        <div class="filters-wrap">
+          <button id="filtersToggle" class="filters-toggle" type="button" aria-expanded="false">
+            ⚙️ Filtres & tri
+            <span class="muted">Afficher / Masquer</span>
+          </button>
 
-          <div class="filters-grid">
-            <div class="filter-card">
-              <div class="filter-title">🎯 Ton usage</div>
-              <div class="chip-row">
-                <button class="chip chip-filter is-active" data-filter="usage" data-value="data">📱 Data</button>
-                <button class="chip chip-filter" data-filter="usage" data-value="mixte">🔄 Mixte</button>
-                <button class="chip chip-filter" data-filter="usage" data-value="appels">📞 Appels</button>
+          <div id="filtersPanel" class="filters-panel">
+            <div class="filters-grid">
+              <div class="filter-card">
+                <div class="filter-title">🎯 Ton usage</div>
+                <label class="select-row">
+                  <span class="muted">Usage</span>
+                  <select id="usageSelect">
+                    <option value="data">📱 Data</option>
+                    <option value="mixte">🔄 Mixte</option>
+                    <option value="appels">📞 Appels</option>
+                  </select>
+                </label>
               </div>
-            </div>
 
-            <div class="filter-card">
-              <div class="filter-title">📡 Opérateur</div>
-              <div class="chip-row">
-                <button class="chip chip-filter is-active" data-filter="operator" data-value="Tous">Tous</button>
-                <button class="chip chip-filter" data-filter="operator" data-value="Orange">Orange</button>
-                <button class="chip chip-filter" data-filter="operator" data-value="Free">Free</button>
-                <button class="chip chip-filter" data-filter="operator" data-value="Expresso">Expresso</button>
+              <div class="filter-card">
+                <div class="filter-title">📡 Opérateur</div>
+                <label class="select-row">
+                  <span class="muted">Opérateur</span>
+                  <select id="operatorSelect">
+                    <option value="Tous">Tous</option>
+                    <option value="Orange">Orange</option>
+                    <option value="Free">Free</option>
+                    <option value="Expresso">Expresso</option>
+                  </select>
+                </label>
               </div>
-            </div>
 
-            <div class="filter-card">
-              <div class="filter-title">⏱ Validité</div>
-              <div class="chip-row">
-                <button class="chip chip-filter is-active" data-filter="validity" data-value="Toutes">Toutes</button>
-                <button class="chip chip-filter" data-filter="validity" data-value="24h">24h</button>
-                <button class="chip chip-filter" data-filter="validity" data-value="7 jours">7 jours</button>
-                <button class="chip chip-filter" data-filter="validity" data-value="30 jours">30 jours</button>
+              <div class="filter-card">
+                <div class="filter-title">⏱ Validité</div>
+                <label class="select-row">
+                  <span class="muted">Validité</span>
+                  <select id="validitySelect">
+                    <option value="Toutes">Toutes</option>
+                    <option value="24h">24h</option>
+                    <option value="7 jours">7 jours</option>
+                    <option value="30 jours">30 jours</option>
+                  </select>
+                </label>
               </div>
-            </div>
 
-            <!-- ✅ NOUVEAU : Tri -->
-            <div class="filter-card">
-              <div class="filter-title">↕️ Trier</div>
-              <div class="chip-row">
-                <button class="chip chip-filter is-active" data-filter="sort" data-value="valeur">Valeur</button>
-                <button class="chip chip-filter" data-filter="sort" data-value="prix">Prix</button>
-                <button class="chip chip-filter" data-filter="sort" data-value="volume">Volume</button>
-                <button class="chip chip-filter" data-filter="sort" data-value="duree">Durée</button>
+              <div class="filter-card">
+                <div class="filter-title">↕️ Trier</div>
+                <label class="select-row">
+                  <span class="muted">Tri</span>
+                  <select id="sortSelect">
+                    <option value="valeur">Valeur</option>
+                    <option value="prix">Prix</option>
+                    <option value="volume">Volume</option>
+                    <option value="duree">Durée</option>
+                  </select>
+                </label>
               </div>
-            </div>
 
-            <!-- ✅ NOUVEAU : Limite affichage -->
-            <div class="filter-card">
-              <div class="filter-title">📌 Afficher</div>
-              <div class="chip-row">
-                <button class="chip chip-filter is-active" data-filter="limit" data-value="8">Top 8</button>
-                <button class="chip chip-filter" data-filter="limit" data-value="16">Top 16</button>
-                <button class="chip chip-filter" data-filter="limit" data-value="0">Tout</button>
+              <div class="filter-card">
+                <div class="filter-title">📌 Afficher</div>
+                <label class="select-row">
+                  <span class="muted">Nombre</span>
+                  <select id="limitSelect">
+                    <option value="8">Top 8</option>
+                    <option value="16">Top 16</option>
+                    <option value="0">Tout</option>
+                  </select>
+                </label>
               </div>
-            </div>
 
-            <div class="wa-card">
-              <div class="wa-title">🟢 Recevoir les bons plans sur WhatsApp</div>
-              <div class="wa-sub">Gratuit. 1 message/jour max.</div>
-              <a id="waOpenBtn" class="btn btn-wa" href="#" rel="noopener noreferrer">Ouvrir WhatsApp</a>
+              <div class="wa-card">
+                <div class="wa-title">🟢 Recevoir les bons plans sur WhatsApp</div>
+                <div class="wa-sub">Gratuit. 1 message/jour max.</div>
+                <a id="waOpenBtn" class="btn btn-wa" href="#" rel="noopener noreferrer">Ouvrir WhatsApp</a>
+              </div>
             </div>
           </div>
-        </details>
+        </div>
       </div>
 
-      <!-- BANNER TOP -->
+      <!-- BANNER TOP (compact) -->
       <div id="bestBanner" class="best-banner hidden">
         <div class="best-title" id="bestTitle">🔥 Recommandations</div>
+
         <div class="best-gain-row">
           <div id="bestGain" class="best-gain hidden"></div>
           <div id="bestSub" class="best-sub hidden"></div>
         </div>
-        <div id="bestReco" class="best-reco">✅ Basé sur ton budget et ton usage</div>
-        <div id="bestMeta" class="best-meta"></div>
 
-        <!-- ✅ 2 recommandations -->
-        <div class="best-duo">
-          <div id="bestDataLine" class="best-line"></div>
-          <div id="bestDurationLine" class="best-line"></div>
-        </div>
+        <div id="bestReco" class="best-reco">✅ Basé sur ton budget et ton usage</div>
+
+        <div id="bestMeta" class="best-meta"></div>
       </div>
 
       <!-- EMPTY STATE -->
@@ -185,12 +200,15 @@
       <p class="subtitle">Mis à jour régulièrement. Codes USSD prêts à copier.</p>
 
       <div class="card">
-        <div class="chip-row">
-          <button class="chip chip-filter is-active" data-filter="promoOperator" data-value="Tous">Tous</button>
-          <button class="chip chip-filter" data-filter="promoOperator" data-value="Orange">Orange</button>
-          <button class="chip chip-filter" data-filter="promoOperator" data-value="Free">Free</button>
-          <button class="chip chip-filter" data-filter="promoOperator" data-value="Expresso">Expresso</button>
-        </div>
+        <label class="select-row">
+          <span class="muted">Opérateur</span>
+          <select id="promoOperatorSelect">
+            <option value="Tous">Tous</option>
+            <option value="Orange">Orange</option>
+            <option value="Free">Free</option>
+            <option value="Expresso">Expresso</option>
+          </select>
+        </label>
       </div>
 
       <div id="promosEmpty" class="empty">Pas de promos publiées pour l’instant.</div>
