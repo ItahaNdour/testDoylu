@@ -14,9 +14,8 @@
   --pill: #f8fafc;
   --pillInk: #0f172a;
 
-  /* ✅ WhatsApp plus contrasté */
-  --wa: #22c55e;
-  --wa2:#22c55e;
+  --wa: #16a34a;
+  --wa2:#22c55e; /* un peu plus contrasté */
 
   --danger:#dc2626;
   --info:#0ea5e9;
@@ -42,8 +41,8 @@ body{
   position:sticky;
   top:0;
   z-index:50;
-  background: rgba(247,239,228,.85);
-  backdrop-filter: blur(10px);
+  background: rgba(247,239,228,.88);
+  backdrop-filter: blur(12px);
   border-bottom:1px solid var(--line);
 }
 
@@ -51,7 +50,7 @@ body{
   display:flex;
   align-items:center;
   justify-content:space-between;
-  padding:14px 0;
+  padding:12px 0;
   gap:14px;
 }
 
@@ -105,7 +104,7 @@ body{
   flex-wrap:wrap;
 }
 
-.main{ padding:26px 0 20px; }
+.main{ padding:22px 0 20px; }
 
 .view h1{
   margin: 8px 0 8px;
@@ -184,18 +183,36 @@ body{
   cursor:pointer;
 }
 
+/* ✅ mobile filters toggle */
+.filters-toggle-row{
+  margin-top:12px;
+  display:none;
+}
+.filters-toggle{
+  width:100%;
+  justify-content:space-between;
+  border-radius:18px;
+  padding:12px 14px;
+}
+
+/* panel wrapper */
+.filters-panel{ margin-top:16px; }
+.filters-panel.is-open{ display:block; }
+
 .filters-grid{
-  margin-top:16px;
+  margin-top:0;
   display:grid;
   grid-template-columns: 1fr 1fr 1fr 1.2fr;
   gap:14px;
   align-items:stretch;
 }
+
 .filter-card{
   background: rgba(255,255,255,.65);
   border:1px solid var(--line);
   border-radius: var(--radius);
   padding:14px;
+  min-width:0;
 }
 .filter-title{
   font-weight:900;
@@ -227,6 +244,7 @@ body{
   background: rgba(22,163,74,.14);
   border:1px solid rgba(22,163,74,.25);
   padding:14px;
+  min-width:0;
 }
 .wa-title{ font-weight:900; }
 .wa-sub{ color:var(--muted); font-weight:700; margin:6px 0 10px; }
@@ -254,14 +272,10 @@ body{
   color: var(--ink);
   border:1px solid var(--line);
 }
-
-/* ✅ WhatsApp plus visible */
 .btn-wa{
-  background: var(--wa2);
+  background: linear-gradient(180deg, var(--wa2), var(--wa));
   color:white;
-  box-shadow: 0 10px 22px rgba(34,197,94,.25);
 }
-.btn-wa:hover{ filter: brightness(1.02); }
 
 .mini-meta{ display:flex; gap:10px; justify-content:flex-end; padding-top:8px; }
 .muted{ color:var(--muted); font-weight:700; }
@@ -274,6 +288,18 @@ body{
   padding:16px;
 }
 .best-title{ font-weight:1000; font-size:18px; }
+.best-line{
+  margin-top:10px;
+  color: var(--ink);
+  font-weight:900;
+}
+.best-gain-row{
+  margin-top:10px;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+}
 .best-gain{
   display:inline-flex;
   padding:8px 12px;
@@ -281,21 +307,16 @@ body{
   background: rgba(15,23,42,.92);
   color:white;
   font-weight:1000;
-  margin-top:10px;
 }
-.best-sub{ margin-top:8px; color:var(--muted); font-weight:800; }
-.best-reco{
-  margin-top:10px;
+.best-unit{
   display:inline-flex;
-  gap:8px;
-  align-items:center;
+  padding:8px 12px;
+  border-radius:999px;
   background: rgba(22,163,74,.12);
   border:1px solid rgba(22,163,74,.22);
-  padding:8px 12px;
-  border-radius: 999px;
-  font-weight:900;
+  color:#14532d;
+  font-weight:1000;
 }
-.best-meta{ margin-top:10px; color:var(--muted); font-weight:800; }
 
 .empty{
   margin-top:14px;
@@ -319,7 +340,7 @@ body{
 .grid{
   margin-top:12px;
   display:grid;
-  grid-template-columns: 1fr 1fr; /* 2 colonnes desktop */
+  grid-template-columns: 1fr 1fr;
   gap:14px;
 }
 
@@ -373,6 +394,11 @@ body{
   font-size:36px;
   color: var(--danger);
   letter-spacing:-.5px;
+}
+.offer-submeta{
+  margin-top:6px;
+  color:var(--muted);
+  font-weight:900;
 }
 .offer-meta{
   margin-top:6px;
@@ -537,13 +563,13 @@ body{
   .nav{ display:none; }
   .budget-row{ grid-template-columns: 1fr; }
   .budget-input-row{ grid-template-columns: 1fr; }
-  .grid{ grid-template-columns: 1fr; } /* 1 colonne mobile */
+  .grid{ grid-template-columns: 1fr; }
 
-  /* ✅ Header mobile plus compact + plus premium */
-  .site-header{
-    background: rgba(247,239,228,.92);
-    backdrop-filter: blur(12px);
-    box-shadow: 0 10px 24px rgba(15,23,42,.06);
-  }
-  .header-row{ padding:10px 0; }
+  /* ✅ IMPORTANT: plus de scroll horizontal mobile */
+  .filters-grid{ grid-template-columns: 1fr; }
+
+  /* ✅ Mobile: filtres repliables */
+  .filters-toggle-row{ display:block; }
+  .filters-panel{ display:none; }
+  .filters-panel.is-open{ display:block; }
 }
