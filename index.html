@@ -75,72 +75,9 @@
             <div id="lastUpdate" class="pill">Dernière MAJ : —</div>
             <button id="howVerifyBtn" class="link-btn" type="button">Comment on vérifie ?</button>
           </div>
-
-          <!-- MOBILE: bouton filtres -->
-          <button id="filtersToggle" class="filters-toggle" type="button" aria-expanded="false">
-            ⚙️ Filtres & tri <span id="filtersChevron" class="chev">▼</span>
-          </button>
-
-          <!-- MOBILE: panneau filtres dropdown -->
-          <div id="filtersPanel" class="filters-panel hidden" aria-label="Filtres et tri">
-            <div class="filters-panel-grid">
-              <label class="field">
-                <span>Usage</span>
-                <select id="mUsage">
-                  <option value="data">Data</option>
-                  <option value="mixte">Mixte</option>
-                  <option value="appels">Appels</option>
-                </select>
-              </label>
-
-              <label class="field">
-                <span>Opérateur</span>
-                <select id="mOperator">
-                  <option value="Tous">Tous</option>
-                  <option value="Orange">Orange</option>
-                  <option value="Free">Free</option>
-                  <option value="Expresso">Expresso</option>
-                </select>
-              </label>
-
-              <label class="field">
-                <span>Validité</span>
-                <select id="mValidity">
-                  <option value="Toutes">Toutes</option>
-                  <option value="24h">24h</option>
-                  <option value="7 jours">7 jours</option>
-                  <option value="30 jours">30 jours</option>
-                </select>
-              </label>
-
-              <label class="field">
-                <span>Trier</span>
-                <select id="mSort">
-                  <option value="valeur">Valeur</option>
-                  <option value="prix">Prix</option>
-                  <option value="volume">Volume</option>
-                  <option value="duree">Durée</option>
-                </select>
-              </label>
-
-              <label class="field">
-                <span>Afficher</span>
-                <select id="mShow">
-                  <option value="8">Top 8</option>
-                  <option value="16">Top 16</option>
-                  <option value="0">Tout</option>
-                </select>
-              </label>
-
-              <div class="filters-panel-actions">
-                <button id="mApply" class="btn btn-cta" type="button">Appliquer</button>
-              </div>
-            </div>
-          </div>
         </div>
 
-        <!-- DESKTOP: filtres chips (on garde ta UX desktop) -->
-        <div class="filters-grid filters-desktop">
+        <div class="filters-grid">
           <div class="filter-card">
             <div class="filter-title">🎯 Ton usage</div>
             <div class="chip-row">
@@ -178,17 +115,16 @@
         </div>
       </div>
 
-      <!-- BANNER TOP (compact) -->
+      <!-- BANNER TOP -->
       <div id="bestBanner" class="best-banner hidden">
         <div class="best-title" id="bestTitle">🔥 Meilleur choix</div>
-        <div id="bestLine1" class="best-line"></div>
-        <div id="bestLine2" class="best-line muted"></div>
 
         <div class="best-gain-row">
           <div id="bestGain" class="best-gain hidden"></div>
           <div id="bestSub" class="best-sub hidden"></div>
         </div>
 
+        <div id="bestReco" class="best-reco">—</div>
         <div id="bestMeta" class="best-meta"></div>
       </div>
 
