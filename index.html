@@ -49,7 +49,7 @@
               </div>
 
               <div class="budget-input-row">
-                <input id="budgetInput" type="number" inputmode="numeric" placeholder="Ex: 1500 (facultatif)" />
+                <input id="budgetInput" type="number" inputmode="numeric" placeholder="Ex: 1500 (optionnel)" />
                 <button id="budgetSubmit" class="btn btn-cta">Voir les offres</button>
               </div>
 
@@ -59,7 +59,7 @@
                 <button class="chip chip-budget" data-budget="2000">2000</button>
                 <button class="chip chip-budget" data-budget="3000">3000</button>
                 <button class="chip chip-budget" data-budget="5000">5000</button>
-                <button class="chip chip-budget" data-budget="0">Tout</button>
+                <button class="chip chip-budget chip-ghost" data-budget="0">Sans budget</button>
               </div>
             </div>
 
@@ -70,68 +70,121 @@
             </div>
           </div>
 
-          <div class="trust-row trust-compact">
-            <div class="pill">🔒 Vérifiées</div>
-            <div class="pill">⚖️ Indépendant</div>
-            <div id="lastUpdate" class="pill">MAJ : —</div>
+          <!-- TRUST ROW (compact option 1) -->
+          <div class="trust-row compact">
+            <div class="trust-pill">
+              🔒 Vérifiées • ⚖️ Indépendant • <span id="lastUpdateText">MAJ : —</span>
+            </div>
             <button id="howVerifyBtn" class="link-btn" type="button">Comment on vérifie ?</button>
           </div>
-        </div>
 
-        <!-- FILTRES (desktop visibles) / (mobile en accordéon) -->
-        <details id="filtersDetails" class="filters-details">
-          <summary class="filters-summary">⚙️ Filtres & tri</summary>
+          <!-- MOBILE FILTERS BUTTON -->
+          <div class="mobile-filters">
+            <button id="filtersToggle" class="filters-toggle" type="button" aria-expanded="false">
+              ⚙️ Filtres & tri <span class="chev">▾</span>
+            </button>
 
-          <div class="filters-grid">
-            <div class="filter-card">
-              <div class="filter-title">🎯 Ton usage</div>
-              <div class="chip-row">
-                <button class="chip chip-filter is-active" data-filter="usage" data-value="data">📱 Data</button>
-                <button class="chip chip-filter" data-filter="usage" data-value="mixte">🔄 Mixte</button>
-                <button class="chip chip-filter" data-filter="usage" data-value="appels">📞 Appels</button>
+            <div id="filtersPanel" class="filters-panel hidden" role="region" aria-label="Filtres">
+              <div class="filters-panel-grid">
+                <label class="field">
+                  <span>Usage</span>
+                  <select id="mUsage">
+                    <option value="data">Data</option>
+                    <option value="mixte">Mixte</option>
+                    <option value="appels">Appels</option>
+                  </select>
+                </label>
+
+                <label class="field">
+                  <span>Opérateur</span>
+                  <select id="mOperator">
+                    <option value="Tous">Tous</option>
+                    <option value="Orange">Orange</option>
+                    <option value="Free">Free</option>
+                    <option value="Expresso">Expresso</option>
+                  </select>
+                </label>
+
+                <label class="field">
+                  <span>Validité</span>
+                  <select id="mValidity">
+                    <option value="Toutes">Toutes</option>
+                    <option value="24h">24h</option>
+                    <option value="7 jours">7 jours</option>
+                    <option value="30 jours">30 jours</option>
+                  </select>
+                </label>
+
+                <label class="field">
+                  <span>Trier</span>
+                  <select id="mSort">
+                    <option value="valeur">Valeur</option>
+                    <option value="prix">Prix</option>
+                    <option value="volume">Volume</option>
+                    <option value="duree">Durée</option>
+                  </select>
+                </label>
+
+                <label class="field">
+                  <span>Afficher</span>
+                  <select id="mShow">
+                    <option value="8">Top 8</option>
+                    <option value="16">Top 16</option>
+                    <option value="9999">Tout</option>
+                  </select>
+                </label>
+
+                <button id="mApply" class="btn btn-cta" type="button">Appliquer</button>
               </div>
-            </div>
-
-            <div class="filter-card">
-              <div class="filter-title">📡 Opérateur</div>
-              <div class="chip-row">
-                <button class="chip chip-filter is-active" data-filter="operator" data-value="Tous">Tous</button>
-                <button class="chip chip-filter" data-filter="operator" data-value="Orange">Orange</button>
-                <button class="chip chip-filter" data-filter="operator" data-value="Free">Free</button>
-                <button class="chip chip-filter" data-filter="operator" data-value="Expresso">Expresso</button>
-              </div>
-            </div>
-
-            <div class="filter-card">
-              <div class="filter-title">⏱ Validité</div>
-              <div class="chip-row">
-                <button class="chip chip-filter is-active" data-filter="validity" data-value="Toutes">Toutes</button>
-                <button class="chip chip-filter" data-filter="validity" data-value="24h">24h</button>
-                <button class="chip chip-filter" data-filter="validity" data-value="7 jours">7 jours</button>
-                <button class="chip chip-filter" data-filter="validity" data-value="30 jours">30 jours</button>
-              </div>
-            </div>
-
-            <div class="wa-card">
-              <div class="wa-title">🟢 Recevoir les bons plans sur WhatsApp</div>
-              <div class="wa-sub">Gratuit. 1 message/jour max.</div>
-              <a id="waOpenBtn" class="btn btn-wa" href="#" rel="noopener noreferrer">Ouvrir WhatsApp</a>
             </div>
           </div>
-        </details>
-      </div>
-
-      <!-- BANNER TOP (compact) -->
-      <div id="bestBanner" class="best-banner hidden">
-        <div class="best-title" id="bestTitle">🔥 Meilleur choix</div>
-
-        <div id="bestLine1" class="best-line1"></div>
-        <div class="best-row">
-          <div id="bestUnitPrice" class="best-unit hidden"></div>
-          <div id="bestGain" class="best-gain hidden"></div>
         </div>
 
-        <div id="bestMeta" class="best-meta"></div>
+        <!-- DESKTOP FILTERS (chips) -->
+        <div class="filters-grid desktop-only">
+          <div class="filter-card">
+            <div class="filter-title">🎯 Ton usage</div>
+            <div class="chip-row">
+              <button class="chip chip-filter is-active" data-filter="usage" data-value="data">📱 Data</button>
+              <button class="chip chip-filter" data-filter="usage" data-value="mixte">🔄 Mixte</button>
+              <button class="chip chip-filter" data-filter="usage" data-value="appels">📞 Appels</button>
+            </div>
+          </div>
+
+          <div class="filter-card">
+            <div class="filter-title">📡 Opérateur</div>
+            <div class="chip-row">
+              <button class="chip chip-filter is-active" data-filter="operator" data-value="Tous">Tous</button>
+              <button class="chip chip-filter" data-filter="operator" data-value="Orange">Orange</button>
+              <button class="chip chip-filter" data-filter="operator" data-value="Free">Free</button>
+              <button class="chip chip-filter" data-filter="operator" data-value="Expresso">Expresso</button>
+            </div>
+          </div>
+
+          <div class="filter-card">
+            <div class="filter-title">⏱ Validité</div>
+            <div class="chip-row">
+              <button class="chip chip-filter is-active" data-filter="validity" data-value="Toutes">Toutes</button>
+              <button class="chip chip-filter" data-filter="validity" data-value="24h">24h</button>
+              <button class="chip chip-filter" data-filter="validity" data-value="7 jours">7 jours</button>
+              <button class="chip chip-filter" data-filter="validity" data-value="30 jours">30 jours</button>
+            </div>
+          </div>
+
+          <div class="wa-card">
+            <div class="wa-title">🟢 Recevoir les bons plans sur WhatsApp</div>
+            <div class="wa-sub">Gratuit. 1 message/jour max.</div>
+            <a id="waOpenBtn" class="btn btn-wa" href="#" rel="noopener noreferrer">Ouvrir WhatsApp</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- BANNER TOP (simplifié) -->
+      <div id="bestBanner" class="best-banner hidden">
+        <div class="best-title" id="bestTitle">🔥 Meilleur choix</div>
+        <div id="bestLine1" class="best-line"></div>
+        <div id="bestUnit" class="best-unit hidden"></div>
+        <div id="bestGain" class="best-gain hidden"></div>
       </div>
 
       <!-- EMPTY STATE -->
@@ -270,124 +323,6 @@
         <p class="muted">Doylu est indépendant des opérateurs. Les offres sont informatives et vérifiées.</p>
       </div>
     </section>
-
-    <!-- ADMIN (caché) -->
-    <section id="view-admin" class="view hidden">
-      <h1>Admin (invisible au public)</h1>
-      <p class="subtitle">Accès via <code>#admin</code> + mot de passe.</p>
-
-      <div id="adminGate" class="card">
-        <label class="field">
-          <span>Mot de passe</span>
-          <input id="adminPass" type="password" placeholder="Mot de passe admin" />
-        </label>
-        <button id="adminLogin" class="btn btn-cta" type="button">Se connecter</button>
-        <div id="adminGateMsg" class="muted"></div>
-      </div>
-
-      <div id="adminPanel" class="hidden">
-        <div class="admin-row">
-          <div class="card">
-            <h2 class="section-title">Ajouter / Modifier une offre</h2>
-
-            <div class="admin-grid">
-              <label class="field">
-                <span>Opérateur</span>
-                <select id="aOperator">
-                  <option>Orange</option>
-                  <option>Free</option>
-                  <option>Expresso</option>
-                </select>
-              </label>
-
-              <label class="field">
-                <span>Nom</span>
-                <input id="aName" type="text" placeholder="Ex: Pass Jour 5Go" />
-              </label>
-
-              <label class="field">
-                <span>Prix (FCFA)</span>
-                <input id="aPrice" type="number" inputmode="numeric" placeholder="Ex: 1000" />
-              </label>
-
-              <label class="field">
-                <span>Usage</span>
-                <select id="aUsage">
-                  <option value="data">data</option>
-                  <option value="appels">appels</option>
-                  <option value="mixte">mixte</option>
-                </select>
-              </label>
-
-              <label class="field">
-                <span>Data (MB)</span>
-                <input id="aDataMb" type="number" inputmode="numeric" placeholder="Ex: 5120" />
-              </label>
-
-              <label class="field">
-                <span>Minutes</span>
-                <input id="aMinutes" type="number" inputmode="numeric" placeholder="Ex: 120" />
-              </label>
-
-              <label class="field">
-                <span>Validité (jours)</span>
-                <input id="aValidityDays" type="number" inputmode="numeric" placeholder="Ex: 1 / 7 / 30" />
-              </label>
-
-              <label class="field">
-                <span>Code USSD</span>
-                <input id="aUssd" type="text" placeholder="Ex: #1234#" />
-              </label>
-
-              <label class="field">
-                <span>Éligibilité</span>
-                <select id="aEligibility">
-                  <option value="public">public</option>
-                  <option value="student">student</option>
-                  <option value="corporate">corporate</option>
-                  <option value="special">special</option>
-                </select>
-              </label>
-
-              <label class="field">
-                <span>Source badge</span>
-                <select id="aSourceBadge">
-                  <option>Source SMS</option>
-                  <option>Source officielle</option>
-                </select>
-              </label>
-
-              <label class="field inline">
-                <span>Promo</span>
-                <input id="aPromo" type="checkbox" />
-              </label>
-            </div>
-
-            <div class="admin-actions">
-              <button id="aSave" class="btn btn-cta" type="button">Enregistrer</button>
-              <button id="aReset" class="btn btn-light" type="button">Réinitialiser</button>
-              <div id="adminToast" class="muted"></div>
-            </div>
-          </div>
-
-          <div class="card">
-            <h2 class="section-title">Import / Export JSON</h2>
-            <div class="admin-actions">
-              <button id="exportJson" class="btn btn-light" type="button">Exporter JSON</button>
-              <label class="btn btn-light file-btn" for="importFile">Importer JSON</label>
-              <input id="importFile" type="file" accept="application/json" />
-            </div>
-            <p class="muted">Export = sauvegarde complète. Import = remplace tes offres.</p>
-            <div id="importMsg" class="muted"></div>
-
-            <hr class="sep" />
-
-            <h2 class="section-title">Liste des offres</h2>
-            <div id="adminList" class="admin-list"></div>
-          </div>
-        </div>
-      </div>
-    </section>
   </main>
 
   <!-- MODAL -->
@@ -408,6 +343,7 @@
     © <span id="year"></span> Doylu • Site indépendant des opérateurs.
   </footer>
 
-  <script src="script.js"></script>
+  <!-- IMPORTANT: module pour Firebase -->
+  <script type="module" src="script.js"></script>
 </body>
 </html>
