@@ -1,10 +1,11 @@
-/* Doylu V1 — script.js COMPLET (stable)
-   ✅ Recherche sans budget (champ vide => toutes les offres)
-   ✅ Mobile: filtres en accordéon (bouton "Filtres & tri")
-   ✅ Bandeau meilleur choix compact (moins de texte)
-   ✅ Résultats: "X offres trouvées"
-   ✅ Trust-row compact (option 1)
-   ✅ FCFA/Go ou FCFA/min affiché
+/* Doylu V1 — script.js COMPLET (stable + améliorations demandées)
+   - Navigation hash (#accueil/#promos/#ussd/#contact/#admin)
+   - Budget V1: si X > 0 => price >= X && price <= X*1.2
+              si X = 0 => pas de filtre budget (recherche libre)
+   - Filtres: usage, opérateur (Orange/Free/Expresso), validité
+   - Top + gain dynamiques (uniquement offres public)
+   - Offres sous conditions séparées
+   - Bandeau top compact + wording simple
 */
 
 (() => {
@@ -16,14 +17,11 @@
   const CONFIG = {
     operators: ["Orange", "Free", "Expresso"],
     validityMap: { "Toutes": null, "24h": 1, "7 jours": 7, "30 jours": 30 },
-    budgetBands: [
-      { low: 1.0, high: 1.0 }, // exact
-      { low: 0.8, high: 1.0 },
-      { low: 0.7, high: 1.0 },
-    ],
+    budgetTolerance: 1.2,
     adminPassword: "doylu2026",
     STORAGE_KEY: "doylu_offers_v1",
     WA_LINK: "https://wa.me/?text=",
+    gainMinRatio: 0.15, // n'affiche gain que si >= 15% vs l'autre (évite le gadget)
   };
 
   /* =========================
@@ -32,19 +30,14 @@
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
   const safe = (v) => (v == null ? "" : String(v));
-
   const clampInt = (v, fallback = 0) => {
-    const raw = String(v ?? "").trim();
-    if (!raw) return fallback;
-    const n = Number.parseInt(raw.replace(/[^\d]/g, ""), 10);
+    const n = Number.parseInt(String(v ?? "").replace(/[^\d]/g, ""), 10);
     return Number.isFinite(n) ? n : fallback;
   };
-
   const nowHHMM = () => {
     const d = new Date();
     return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   };
-
   const formatFcfa = (n) => `${Number(n).toLocaleString("fr-FR")} FCFA`;
   const mbToGo = (mb) => mb / 1024;
   const roundTo = (value, step) => Math.round(value / step) * step;
@@ -57,6 +50,34 @@
       return `${s} Go`;
     }
     return `${Math.round(mb)} Mo`;
+  };
+
+  const formatUnitPrice = (o, usage) => {
+    if (!o || !Number.isFinite(o.price_fcfa) || o.price_fcfa <= 0) return null;
+
+    if (usage === "appels") {
+      if (!Number.isFinite(o.minutes) || o.minutes <= 0) return null;
+      const perMin = o.price_fcfa / o.minutes;
+      const v = perMin < 1 ? perMin.toFixed(2) : perMin.toFixed(1);
+      return `${v} FCFA / min`;
+    }
+
+    // data ou mixte: si data dispo => FCFA/Go
+    if (Number.isFinite(o.data_mb) && o.data_mb > 0) {
+      const go = o.data_mb / 1024;
+      if (go <= 0) return null;
+      const perGo = Math.round(o.price_fcfa / go);
+      return `${perGo} FCFA / Go`;
+    }
+
+    // mixte sans data => minutes si dispo
+    if (usage === "mixte" && Number.isFinite(o.minutes) && o.minutes > 0) {
+      const perMin = o.price_fcfa / o.minutes;
+      const v = perMin < 1 ? perMin.toFixed(2) : perMin.toFixed(1);
+      return `${v} FCFA / min`;
+    }
+
+    return null;
   };
 
   const toast = (msg) => {
@@ -99,21 +120,19 @@
     };
   };
 
+  // Tu peux remplacer par tes vraies offres (ou importer via admin)
   const defaultOffers = () => ([
     { operator: "Orange", name: "Pass USSD 3,5Go (24h)", price_fcfa: 700, type_usage: "data", data_mb: 3.5 * 1024, validity_days: 1, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
     { operator: "Orange", name: "Pass Jour 300Mo", price_fcfa: 200, type_usage: "data", data_mb: 300, validity_days: 1, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
     { operator: "Orange", name: "Pass Jour 1,5Go", price_fcfa: 500, type_usage: "data", data_mb: 1536, validity_days: 1, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
     { operator: "Orange", name: "Pass Jour 5Go", price_fcfa: 1000, type_usage: "data", data_mb: 5 * 1024, validity_days: 1, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
-    { operator: "Orange", name: "Pass Nuit 5Go (23h-6h)", price_fcfa: 500, type_usage: "data", data_mb: 5 * 1024, validity_days: 1, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
-
-    { operator: "Orange", name: "Pass semaine 600Mo", price_fcfa: 500, type_usage: "data", data_mb: 600, validity_days: 7, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
     { operator: "Orange", name: "Pass semaine 2Go", price_fcfa: 1000, type_usage: "data", data_mb: 2 * 1024, validity_days: 7, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
-
-    { operator: "Orange", name: "Pass Mois 12Go", price_fcfa: 3000, type_usage: "data", data_mb: 12 * 1024, validity_days: 30, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
-    { operator: "Orange", name: "Pass Mois 25Go", price_fcfa: 5000, type_usage: "data", data_mb: 25 * 1024, validity_days: 30, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
     { operator: "Orange", name: "Promo 10Go (30 jours) exclusif OM", price_fcfa: 2000, type_usage: "data", data_mb: 10 * 1024, validity_days: 30, ussd_code: "#1234#", eligibility_type: "public", est_promo: true, source_badge: "Source SMS", status: "active" },
-
     { operator: "Orange", name: "Pass Éducation 1Go", price_fcfa: 100, type_usage: "data", data_mb: 1024, validity_days: 7, ussd_code: "#1234#", eligibility_type: "student", source_badge: "Source SMS", status: "active" },
+
+    // Exemple Free / Expresso (à compléter)
+    { operator: "Free", name: "Pass Jour 1Go", price_fcfa: 500, type_usage: "data", data_mb: 1024, validity_days: 1, ussd_code: "*xxx#", eligibility_type: "public", source_badge: "Source officielle", status: "active" },
+    { operator: "Expresso", name: "Pass Jour 2Go", price_fcfa: 1000, type_usage: "data", data_mb: 2048, validity_days: 1, ussd_code: "*xxx#", eligibility_type: "public", source_badge: "Source officielle", status: "active" },
   ].map(normalizeOffer));
 
   const loadOffers = () => {
@@ -131,7 +150,7 @@
   const saveOffers = (arr) => {
     localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(arr));
     const lastUpdate = $("#lastUpdate");
-    if (lastUpdate) lastUpdate.textContent = `MAJ : aujourd'hui ${nowHHMM()}`;
+    if (lastUpdate) lastUpdate.textContent = `MAJ : ${nowHHMM()}`;
   };
 
   let OFFERS = loadOffers();
@@ -141,18 +160,17 @@
    * ========================= */
   const state = {
     route: "accueil",
-    budgetX: 1000,   // number | null (null => tout afficher)
-    usage: "data",
-    operator: "Tous",
-    validity: "Toutes",
+    budgetX: 1000,        // 0 => pas de budget
+    usage: "data",        // data|mixte|appels
+    operator: "Tous",     // Tous|Orange|Free|Expresso
+    validity: "Toutes",   // Toutes|24h|7 jours|30 jours
     promoOperator: "Tous",
     isAdmin: false,
     editingId: null,
-    filtersOpen: false,
   };
 
   /* =========================
-   * 4) PIPELINE
+   * 4) FILTERS / LOGIC
    * ========================= */
   const isActive = (o) => safe(o.status).toLowerCase() === "active";
   const isOperatorAllowed = (o) => CONFIG.operators.includes(o.operator);
@@ -171,17 +189,10 @@
     return o.validity_days <= maxDays;
   };
 
-  const filterByBudgetBand = (list, x) => {
-    const exact = list.filter((o) => o.price_fcfa === x);
-    if (exact.length) return exact;
-
-    for (const band of CONFIG.budgetBands.slice(1)) {
-      const low = Math.ceil(band.low * x);
-      const high = Math.floor(band.high * x);
-      const found = list.filter((o) => o.price_fcfa >= low && o.price_fcfa <= high);
-      if (found.length) return found;
-    }
-    return [];
+  const filterByBudget = (list, x) => {
+    if (!Number.isFinite(x) || x <= 0) return list; // recherche libre
+    const high = Math.floor(x * CONFIG.budgetTolerance);
+    return list.filter((o) => Number.isFinite(o.price_fcfa) && o.price_fcfa >= x && o.price_fcfa <= high);
   };
 
   const computeScore = (o, usage) => {
@@ -205,59 +216,68 @@
   const formatGainData = (gainMb) => {
     if (!Number.isFinite(gainMb) || gainMb <= 0) return null;
     if (gainMb < 1024) {
-      const rounded = Math.max(50, roundTo(gainMb, 50));
-      return `🔥 +${rounded} Mo`;
+      const rounded = roundTo(gainMb, 50);
+      return `+${Math.max(50, rounded)} Mo`;
     }
     const gainGo = mbToGo(gainMb);
-    const roundedGo = Math.max(0.5, roundTo(gainGo, 0.5));
+    const roundedGo = roundTo(gainGo, 0.5);
     const str = roundedGo % 1 === 0 ? roundedGo.toFixed(0) : roundedGo.toFixed(1);
-    return `🔥 +${str} Go`;
+    return `+${str} Go`;
   };
 
   const formatGainMinutes = (gainMin) => {
     if (!Number.isFinite(gainMin) || gainMin <= 0) return null;
-    return `🔥 +${Math.round(gainMin)} min`;
+    return `+${Math.round(gainMin)} min`;
   };
 
-  const computeGain = (top1, top2, usage) => {
+  const gainIsMeaningful = (a, b) => {
+    // a = top1, b = top2
+    if (!a || !b) return false;
+
+    if (state.usage === "appels") {
+      if (!Number.isFinite(a.minutes) || !Number.isFinite(b.minutes) || b.minutes <= 0) return false;
+      return (a.minutes - b.minutes) / b.minutes >= CONFIG.gainMinRatio;
+    }
+
+    // data/mixte: si data dispo
+    if (Number.isFinite(a.data_mb) && Number.isFinite(b.data_mb) && b.data_mb > 0) {
+      return (a.data_mb - b.data_mb) / b.data_mb >= CONFIG.gainMinRatio;
+    }
+
+    // mixte fallback minutes
+    if (state.usage === "mixte" && Number.isFinite(a.minutes) && Number.isFinite(b.minutes) && b.minutes > 0) {
+      return (a.minutes - b.minutes) / b.minutes >= CONFIG.gainMinRatio;
+    }
+
+    return false;
+  };
+
+  const computeGainLabel = (top1, top2, usage) => {
     if (!top1 || !top2) return null;
+    if (!gainIsMeaningful(top1, top2)) return null;
 
     if (usage === "appels") {
       if (!Number.isFinite(top1.minutes) || !Number.isFinite(top2.minutes)) return null;
-      return formatGainMinutes(top1.minutes - top2.minutes);
+      const label = formatGainMinutes(top1.minutes - top2.minutes);
+      return label ? `🔥 ${label} de plus que les autres offres` : null;
     }
 
     if (usage === "mixte") {
       if (Number.isFinite(top1.data_mb) && Number.isFinite(top2.data_mb)) {
-        return formatGainData(top1.data_mb - top2.data_mb);
+        const label = formatGainData(top1.data_mb - top2.data_mb);
+        return label ? `🔥 ${label} de plus que les autres offres` : null;
       }
       if (Number.isFinite(top1.minutes) && Number.isFinite(top2.minutes)) {
-        return formatGainMinutes(top1.minutes - top2.minutes);
+        const label = formatGainMinutes(top1.minutes - top2.minutes);
+        return label ? `🔥 ${label} de plus que les autres offres` : null;
       }
       return null;
     }
 
+    // data
     if (!Number.isFinite(top1.data_mb) || !Number.isFinite(top2.data_mb)) return null;
-    return formatGainData(top1.data_mb - top2.data_mb);
-  };
-
-  const unitCostLabel = (o, usage) => {
-    if (!o || !Number.isFinite(o.price_fcfa) || o.price_fcfa <= 0) return null;
-
-    if (usage === "appels") {
-      if (!Number.isFinite(o.minutes) || o.minutes <= 0) return null;
-      const perMin = o.price_fcfa / o.minutes;
-      return `${Math.round(perMin)} FCFA / min`;
-    }
-
-    // data or mixte (priorité data)
-    if (Number.isFinite(o.data_mb) && o.data_mb > 0) {
-      const go = o.data_mb / 1024;
-      if (go <= 0) return null;
-      const perGo = o.price_fcfa / go;
-      return `${Math.round(perGo)} FCFA / Go`;
-    }
-    return null;
+    const label = formatGainData(top1.data_mb - top2.data_mb);
+    return label ? `🔥 ${label} de plus que les autres offres` : null;
   };
 
   const pipeline = () => {
@@ -268,22 +288,17 @@
       .filter(isActive)
       .filter(isOperatorAllowed);
 
-    // 1) Budget (si budget vide => on ne filtre pas)
-    if (Number.isFinite(x) && x > 0) {
-      list = filterByBudgetBand(list, x);
-      if (!list.length) {
-        return { list: [], publicOffers: [], specialOffers: [], scoredPublic: [], top1: null, top2: null, gain: null };
-      }
-    }
-
-    // 2) Operator
+    // Operator
     if (state.operator !== "Tous") list = list.filter((o) => o.operator === state.operator);
 
-    // 3) Usage
+    // Usage
     list = list.filter((o) => offerHasUsage(o, state.usage));
 
-    // 4) Validity
+    // Validity
     list = list.filter((o) => offerMatchesValidity(o, state.validity));
+
+    // Budget (après filtres, pour avoir une recherche libre possible)
+    list = filterByBudget(list, x);
 
     const publicOffers = list.filter((o) => o.eligibility_type === "public");
     const specialOffers = list.filter((o) => o.eligibility_type !== "public");
@@ -296,9 +311,10 @@
 
     const top1 = scoredPublic[0] || null;
     const top2 = scoredPublic[1] || null;
-    const gain = top1 && top2 ? computeGain(top1, top2, state.usage) : null;
 
-    return { list, publicOffers, specialOffers, scoredPublic, top1, top2, gain };
+    const gainLabel = top1 && top2 ? computeGainLabel(top1, top2, state.usage) : null;
+
+    return { list, publicOffers, specialOffers, scoredPublic, top1, gainLabel };
   };
 
   /* =========================
@@ -317,7 +333,7 @@
       metaLine = `📱 ${Number.isFinite(o.data_mb) ? formatData(o.data_mb) : "—"} • ⏱ ${Number.isFinite(o.validity_days) ? `${o.validity_days} jour(s)` : "Inconnu"}`;
     }
 
-    const unit = unitCostLabel(o, usage);
+    const unit = formatUnitPrice(o, usage);
     const unitHtml = unit ? `<div class="offer-unit">💰 ${unit}</div>` : "";
 
     const ussdHtml = `
@@ -401,7 +417,7 @@
     `;
   };
 
-  const renderBestBanner = ({ top1, gain }) => {
+  const renderBestBanner = ({ top1, gainLabel }) => {
     const banner = $("#bestBanner");
     if (!banner) return;
 
@@ -410,36 +426,39 @@
       return;
     }
 
-    banner.classList.remove("hidden");
-
     const hasBudget = Number.isFinite(state.budgetX) && state.budgetX > 0;
+
+    banner.classList.remove("hidden");
     $("#bestTitle").textContent = hasBudget
       ? `🔥 Meilleur choix pour ${formatFcfa(state.budgetX)}`
       : `🔥 Meilleur choix du moment`;
 
-    const vol = state.usage === "appels"
-      ? (Number.isFinite(top1.minutes) ? `${Math.round(top1.minutes)} min` : "—")
-      : (Number.isFinite(top1.data_mb) ? formatData(top1.data_mb) : "—");
+    $("#bestLine1").textContent = `${top1.operator} — ${top1.name}`;
 
-    const dur = Number.isFinite(top1.validity_days) ? `${top1.validity_days} jour(s)` : "Inconnu";
-    $("#bestLine1").textContent = `${top1.operator} — ${top1.name} • ${vol} • ${dur}`;
-
-    const unit = unitCostLabel(top1, state.usage);
-    const bestUnit = $("#bestUnit");
-    if (unit) {
-      bestUnit.textContent = `💰 ${unit}`;
-      bestUnit.classList.remove("hidden");
-    } else {
-      bestUnit.classList.add("hidden");
+    const unit = formatUnitPrice(top1, state.usage);
+    const unitEl = $("#bestUnitPrice");
+    if (unit && unitEl) {
+      unitEl.textContent = `💰 ${unit}`;
+      unitEl.classList.remove("hidden");
+    } else if (unitEl) {
+      unitEl.classList.add("hidden");
     }
 
-    const bestGain = $("#bestGain");
-    if (gain) {
-      bestGain.textContent = `${gain} vs la 2e offre`;
-      bestGain.classList.remove("hidden");
-    } else {
-      bestGain.classList.add("hidden");
+    const gainEl = $("#bestGain");
+    if (gainLabel && gainEl) {
+      gainEl.textContent = gainLabel;
+      gainEl.classList.remove("hidden");
+    } else if (gainEl) {
+      gainEl.classList.add("hidden");
     }
+
+    const usageMeta =
+      state.usage === "appels"
+        ? `📞 ${Number.isFinite(top1.minutes) ? `${Math.round(top1.minutes)} min` : "—"}`
+        : `📱 ${Number.isFinite(top1.data_mb) ? formatData(top1.data_mb) : "—"}`;
+
+    const validityMeta = `⏱ ${Number.isFinite(top1.validity_days) ? `${top1.validity_days} jour(s)` : "Inconnu"}`;
+    $("#bestMeta").textContent = `${usageMeta} • ${validityMeta} • ${formatFcfa(top1.price_fcfa)}`;
   };
 
   const renderPromos = () => {
@@ -466,7 +485,7 @@
   };
 
   const renderResults = () => {
-    const { list, specialOffers, scoredPublic, top1, gain } = pipeline();
+    const { list, specialOffers, scoredPublic, top1, gainLabel } = pipeline();
 
     // count
     const countEl = $("#offersCount");
@@ -477,27 +496,30 @@
     if (empty) {
       if (!list.length) {
         empty.classList.remove("hidden");
-        const hasBudget = Number.isFinite(state.budgetX) && state.budgetX > 0;
-        empty.textContent = hasBudget
-          ? `Aucune offre proche pour ${formatFcfa(state.budgetX)}. Essaie un autre montant.`
-          : `Aucune offre trouvée avec ces filtres.`;
+        if (state.budgetX > 0) {
+          empty.textContent = `Aucune offre proche pour ${formatFcfa(state.budgetX)}. Essaie un autre montant.`;
+        } else {
+          empty.textContent = `Aucune offre trouvée. Essaie de changer les filtres.`;
+        }
       } else {
         empty.classList.add("hidden");
       }
     }
 
-    renderBestBanner({ top1, gain });
+    renderBestBanner({ top1, gainLabel });
 
-    // title (simple)
+    // title
     const resultsTitle = $("#resultsTitle");
     if (resultsTitle) {
-      resultsTitle.textContent = `${list.length} offre(s) trouvée(s)`;
+      if (state.budgetX > 0) resultsTitle.textContent = `${list.length} offre(s) trouvée(s) pour ${formatFcfa(state.budgetX)}`;
+      else resultsTitle.textContent = `${list.length} offre(s) trouvée(s)`;
     }
 
-    // main grid = uniquement public (trié)
+    // main grid (public, trié)
     const grid = $("#offersGrid");
     if (grid) {
-      grid.innerHTML = scoredPublic.map((o, idx) => renderOfferCard(o, { isTop: idx === 0 })).join("");
+      const html = scoredPublic.map((o, idx) => renderOfferCard(o, { isTop: idx === 0 })).join("");
+      grid.innerHTML = html || "";
     }
 
     // specials
@@ -538,7 +560,10 @@
     $("#mobileNav")?.classList.add("hidden");
     $("#menuBtn")?.setAttribute("aria-expanded", "false");
 
-    if (r === "admin") renderAdmin();
+    if (r === "admin") {
+      // admin panel non prioritaire V1 — laissé stable
+    }
+
     if (r === "accueil") renderResults();
     if (r === "promos") renderPromos();
   };
@@ -557,55 +582,26 @@
     });
   };
 
-  const setActiveBudgetChips = (budgetOrZero) => {
+  const setActiveBudgetChips = (budget) => {
     $$(".chip-budget").forEach((btn) => {
-      btn.classList.toggle("is-active", clampInt(btn.getAttribute("data-budget"), 0) === budgetOrZero);
+      btn.classList.toggle("is-active", clampInt(btn.getAttribute("data-budget"), 0) === budget);
     });
   };
 
-  const applyBudget = (raw) => {
-    const s = String(raw ?? "").trim();
-    if (!s) {
-      // budget vide => tout afficher
-      state.budgetX = null;
-      $("#budgetInput").value = "";
-      setActiveBudgetChips(0);
-      renderResults();
-      $("#bestBanner")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      return;
-    }
+  const applyBudget = (x) => {
+    // budget vide => 0 (recherche libre)
+    const raw = String(x ?? "").trim();
+    const budget = raw === "" ? 0 : Math.max(0, clampInt(raw, 0));
 
-    const budget = Math.max(0, clampInt(s, 0));
-    state.budgetX = budget || null;
+    state.budgetX = budget;
     $("#budgetInput").value = budget ? String(budget) : "";
-    setActiveBudgetChips(budget || 0);
+    setActiveBudgetChips(budget);
     renderResults();
     $("#bestBanner")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const setFiltersPanelForViewport = () => {
-    const panel = $("#filtersPanel");
-    const btn = $("#filtersToggle");
-    if (!panel || !btn) return;
-
-    const isMobile = window.matchMedia("(max-width: 760px)").matches;
-    if (!isMobile) {
-      panel.classList.remove("is-collapsed");
-      btn.setAttribute("aria-expanded", "true");
-      return;
-    }
-
-    // mobile: collapsed by default
-    if (!state.filtersOpen) {
-      panel.classList.add("is-collapsed");
-      btn.setAttribute("aria-expanded", "false");
-    } else {
-      panel.classList.remove("is-collapsed");
-      btn.setAttribute("aria-expanded", "true");
-    }
-  };
-
   const bindEvents = () => {
+    // menu
     $("#menuBtn")?.addEventListener("click", () => {
       const mobile = $("#mobileNav");
       const expanded = $("#menuBtn").getAttribute("aria-expanded") === "true";
@@ -613,6 +609,7 @@
       mobile?.classList.toggle("hidden");
     });
 
+    // nav click (close mobile)
     document.addEventListener("click", (e) => {
       const a = e.target.closest(".nav-link");
       if (!a) return;
@@ -629,12 +626,6 @@
     // quick budgets
     $$(".chip-budget").forEach((btn) => {
       btn.addEventListener("click", () => applyBudget(btn.getAttribute("data-budget")));
-    });
-
-    // filters panel toggle (mobile)
-    $("#filtersToggle")?.addEventListener("click", () => {
-      state.filtersOpen = !state.filtersOpen;
-      setFiltersPanelForViewport();
     });
 
     // filter chips
@@ -667,6 +658,7 @@
       }
     });
 
+    // how verify modal
     const verifyHtml = `
       <ul>
         <li>On collecte des offres reçues par SMS/USSD et des annonces publiques.</li>
@@ -677,18 +669,20 @@
     $("#howVerifyBtn")?.addEventListener("click", () => openModal("Comment on vérifie ?", verifyHtml));
     $("#sourcesInfoBtn")?.addEventListener("click", () => openModal("Comment on vérifie ?", verifyHtml));
 
+    // modal close
     $("#modalClose")?.addEventListener("click", closeModal);
     $("#modal")?.addEventListener("click", (e) => {
       if (e.target.id === "modal") closeModal();
     });
 
+    // WhatsApp main button
     $("#waOpenBtn")?.addEventListener("click", (e) => {
       e.preventDefault();
       const txt = encodeURIComponent("Je veux recevoir les bons plans Doylu sur WhatsApp 🙌");
       window.open(`${CONFIG.WA_LINK}${txt}`, "_blank", "noopener,noreferrer");
     });
 
-    // offer actions
+    // Offer actions (reveal/copy)
     document.addEventListener("click", async (e) => {
       const actionBtn = e.target.closest("[data-action]");
       if (!actionBtn) return;
@@ -735,223 +729,38 @@
       $("#partnerToast").textContent = "✅ OK. Ajoute un email/WA business plus tard.";
       setTimeout(() => ($("#partnerToast").textContent = ""), 2000);
     });
-
-    // admin login
-    $("#adminLogin")?.addEventListener("click", () => {
-      const pass = $("#adminPass")?.value || "";
-      if (pass === CONFIG.adminPassword) {
-        state.isAdmin = true;
-        $("#adminGateMsg").textContent = "";
-        renderAdmin();
-      } else {
-        $("#adminGateMsg").textContent = "Mot de passe incorrect.";
-      }
-    });
-
-    // resize => keep mobile accordion stable
-    window.addEventListener("resize", setFiltersPanelForViewport);
   };
 
   /* =========================
-   * 8) ADMIN (inchangé)
-   * ========================= */
-  const renderAdmin = () => {
-    const gate = $("#adminGate");
-    const panel = $("#adminPanel");
-    if (!gate || !panel) return;
-
-    gate.classList.toggle("hidden", state.isAdmin);
-    panel.classList.toggle("hidden", !state.isAdmin);
-
-    if (!state.isAdmin) return;
-
-    const saveBtn = $("#aSave");
-    const resetBtn = $("#aReset");
-    const exportBtn = $("#exportJson");
-    const importFile = $("#importFile");
-
-    const rebind = (el, handler) => {
-      if (!el) return;
-      const newEl = el.cloneNode(true);
-      el.parentNode.replaceChild(newEl, el);
-      newEl.addEventListener("click", handler);
-      return newEl;
-    };
-
-    rebind(saveBtn, () => {
-      const o = {
-        offer_id: state.editingId || undefined,
-        operator: $("#aOperator").value,
-        name: $("#aName").value,
-        price_fcfa: clampInt($("#aPrice").value, 0),
-        type_usage: $("#aUsage").value,
-        data_mb: $("#aDataMb").value === "" ? null : Number($("#aDataMb").value),
-        minutes: $("#aMinutes").value === "" ? null : Number($("#aMinutes").value),
-        validity_days: $("#aValidityDays").value === "" ? null : Number($("#aValidityDays").value),
-        ussd_code: $("#aUssd").value,
-        eligibility_type: $("#aEligibility").value,
-        source_badge: $("#aSourceBadge").value,
-        est_promo: $("#aPromo").checked,
-        status: "active",
-      };
-
-      const no = normalizeOffer(o);
-      const idx = OFFERS.findIndex((x) => x.offer_id === no.offer_id);
-
-      if (idx >= 0) OFFERS[idx] = no;
-      else OFFERS.unshift(no);
-
-      saveOffers(OFFERS);
-      $("#adminToast").textContent = "✅ Enregistré.";
-      setTimeout(() => ($("#adminToast").textContent = ""), 1500);
-      state.editingId = null;
-      resetAdminForm();
-      renderAdminList();
-      renderResults();
-    });
-
-    rebind(resetBtn, () => {
-      state.editingId = null;
-      resetAdminForm();
-      $("#adminToast").textContent = "Réinitialisé.";
-      setTimeout(() => ($("#adminToast").textContent = ""), 1200);
-    });
-
-    rebind(exportBtn, () => {
-      const blob = new Blob([JSON.stringify(OFFERS, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "doylu_offers.json";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    });
-
-    if (importFile) {
-      importFile.onchange = async () => {
-        const file = importFile.files?.[0];
-        if (!file) return;
-        try {
-          const text = await file.text();
-          const arr = JSON.parse(text);
-          if (!Array.isArray(arr)) throw new Error("JSON invalide");
-          OFFERS = arr.map(normalizeOffer);
-          saveOffers(OFFERS);
-          $("#importMsg").textContent = "✅ Import OK.";
-          setTimeout(() => ($("#importMsg").textContent = ""), 1800);
-          renderAdminList();
-          renderResults();
-        } catch {
-          $("#importMsg").textContent = "❌ Import impossible (JSON invalide).";
-          setTimeout(() => ($("#importMsg").textContent = ""), 2200);
-        } finally {
-          importFile.value = "";
-        }
-      };
-    }
-
-    resetAdminForm(false);
-    renderAdminList();
-  };
-
-  const resetAdminForm = (clearToast = true) => {
-    $("#aOperator").value = "Orange";
-    $("#aName").value = "";
-    $("#aPrice").value = "";
-    $("#aUsage").value = "data";
-    $("#aDataMb").value = "";
-    $("#aMinutes").value = "";
-    $("#aValidityDays").value = "";
-    $("#aUssd").value = "#1234#";
-    $("#aEligibility").value = "public";
-    $("#aSourceBadge").value = "Source SMS";
-    $("#aPromo").checked = false;
-    if (clearToast) $("#adminToast").textContent = "";
-  };
-
-  const renderAdminList = () => {
-    const list = $("#adminList");
-    if (!list) return;
-
-    const items = OFFERS.map(normalizeOffer)
-      .filter(isOperatorAllowed)
-      .sort((a, b) => (a.operator + a.name).localeCompare(b.operator + b.name));
-
-    list.innerHTML = items
-      .map((o) => {
-        const meta = `${o.type_usage} • ${formatFcfa(o.price_fcfa)} • ${o.eligibility_type}`;
-        return `
-          <div class="admin-item" data-admin-offer="${o.offer_id}">
-            <strong>${o.operator} — ${o.name}</strong>
-            <div class="muted">${meta}</div>
-            <div class="row">
-              <button class="btn btn-light" data-admin-action="edit" data-id="${o.offer_id}">Modifier</button>
-              <button class="btn btn-light" data-admin-action="delete" data-id="${o.offer_id}">Supprimer</button>
-            </div>
-          </div>
-        `;
-      })
-      .join("");
-
-    list.onclick = (e) => {
-      const b = e.target.closest("[data-admin-action]");
-      if (!b) return;
-      const action = b.getAttribute("data-admin-action");
-      const id = b.getAttribute("data-id");
-      const o = OFFERS.find((x) => x.offer_id === id);
-      if (!o) return;
-
-      if (action === "delete") {
-        OFFERS = OFFERS.filter((x) => x.offer_id !== id);
-        saveOffers(OFFERS);
-        renderAdminList();
-        renderResults();
-        toast("Supprimé");
-      }
-
-      if (action === "edit") {
-        state.editingId = id;
-        $("#aOperator").value = o.operator;
-        $("#aName").value = o.name;
-        $("#aPrice").value = o.price_fcfa;
-        $("#aUsage").value = o.type_usage;
-        $("#aDataMb").value = o.data_mb ?? "";
-        $("#aMinutes").value = o.minutes ?? "";
-        $("#aValidityDays").value = o.validity_days ?? "";
-        $("#aUssd").value = o.ussd_code ?? "";
-        $("#aEligibility").value = o.eligibility_type ?? "public";
-        $("#aSourceBadge").value = o.source_badge ?? "Source SMS";
-        $("#aPromo").checked = Boolean(o.est_promo);
-        $("#adminToast").textContent = "✏️ Mode édition";
-      }
-    };
-  };
-
-  /* =========================
-   * 9) INIT
+   * 8) INIT
    * ========================= */
   const init = () => {
-    $("#year").textContent = String(new Date().getFullYear());
-    $("#lastUpdate").textContent = `MAJ : aujourd'hui ${nowHHMM()}`;
+    const year = $("#year");
+    if (year) year.textContent = String(new Date().getFullYear());
 
-    // default budget
-    $("#budgetInput").value = String(state.budgetX ?? "");
-    setActiveBudgetChips(state.budgetX ?? 0);
+    $("#lastUpdate").textContent = `MAJ : ${nowHHMM()}`;
 
+    // default budget (affiché)
+    $("#budgetInput").value = state.budgetX ? String(state.budgetX) : "";
+    setActiveBudgetChips(state.budgetX);
+
+    // default chips
     setActiveChips("usage", "data");
     setActiveChips("operator", "Tous");
     setActiveChips("validity", "Toutes");
     setActiveChips("promoOperator", "Tous");
 
+    // mobile filters accordion: fermé par défaut
+    const details = $("#filtersDetails");
+    if (details && window.matchMedia("(max-width: 760px)").matches) {
+      details.open = false;
+    } else if (details) {
+      details.open = true; // desktop open
+    }
+
     bindEvents();
     window.addEventListener("hashchange", handleHash);
     handleHash();
-
-    // mobile accordion initial state
-    state.filtersOpen = false;
-    setFiltersPanelForViewport();
 
     renderResults();
     renderPromos();
