@@ -14,9 +14,7 @@
         <div class="brand-name">Doylu</div>
       </a>
 
-      <button id="menuBtn" class="icon-btn" aria-label="Ouvrir le menu" aria-expanded="false">
-        ☰
-      </button>
+      <button id="menuBtn" class="icon-btn" aria-label="Ouvrir le menu" aria-expanded="false">☰</button>
 
       <nav id="nav" class="nav">
         <a class="nav-link" href="#accueil" data-route="accueil">Accueil</a>
@@ -70,15 +68,13 @@
             </div>
           </div>
 
-          <!-- TRUST ROW (compact option 1) -->
+          <!-- Trust compact -->
           <div class="trust-row compact">
-            <div class="trust-pill">
-              🔒 Vérifiées • ⚖️ Indépendant • <span id="lastUpdateText">MAJ : —</span>
-            </div>
+            <div class="trust-pill">🔒 Vérifiées • ⚖️ Indépendant • <span id="lastUpdateText">MAJ : —</span></div>
             <button id="howVerifyBtn" class="link-btn" type="button">Comment on vérifie ?</button>
           </div>
 
-          <!-- MOBILE FILTERS BUTTON -->
+          <!-- Mobile filters button -->
           <div class="mobile-filters">
             <button id="filtersToggle" class="filters-toggle" type="button" aria-expanded="false">
               ⚙️ Filtres & tri <span class="chev">▾</span>
@@ -140,7 +136,7 @@
           </div>
         </div>
 
-        <!-- DESKTOP FILTERS (chips) -->
+        <!-- Desktop filters (chips) -->
         <div class="filters-grid desktop-only">
           <div class="filter-card">
             <div class="filter-title">🎯 Ton usage</div>
@@ -179,7 +175,7 @@
         </div>
       </div>
 
-      <!-- BANNER TOP (simplifié) -->
+      <!-- BEST BANNER (simple) -->
       <div id="bestBanner" class="best-banner hidden">
         <div class="best-title" id="bestTitle">🔥 Meilleur choix</div>
         <div id="bestLine1" class="best-line"></div>
@@ -187,7 +183,6 @@
         <div id="bestGain" class="best-gain hidden"></div>
       </div>
 
-      <!-- EMPTY STATE -->
       <div id="noResults" class="empty hidden"></div>
 
       <div class="results-head">
@@ -199,7 +194,7 @@
 
       <section id="specialOffersWrap" class="specials hidden">
         <h2 class="section-title">🔒 Offres sous conditions</h2>
-        <p class="muted">Ces offres ne participent pas au Top ni au gain. Elles peuvent nécessiter un justificatif selon l’opérateur.</p>
+        <p class="muted">Ces offres ne participent pas au Top ni au gain.</p>
         <div id="specialOffersGrid" class="grid"></div>
       </section>
 
@@ -227,7 +222,7 @@
 
       <div class="card small">
         <button id="sourcesInfoBtn" class="link-btn" type="button">Comment on vérifie ?</button>
-        <div class="muted">On publie des offres reçues par SMS et confirmées. Si une promo est expirée, elle est retirée.</div>
+        <div class="muted">On publie des offres reçues par SMS et confirmées.</div>
       </div>
     </section>
 
@@ -256,15 +251,6 @@
             <div class="acc-item"><strong>Solde crédit</strong> : <code>*xxx#</code> <span class="muted">(à confirmer)</span></div>
           </div>
         </details>
-      </div>
-
-      <div class="card small">
-        <h2 class="section-title">Astuces</h2>
-        <ul class="muted">
-          <li>Si un code ne marche pas : redémarre, vérifie la SIM par défaut, et essaye une autre variante.</li>
-          <li>Certains pass ne s’affichent que via SMS promo.</li>
-        </ul>
-        <a class="btn btn-cta" href="#accueil">Trouver mon meilleur pass</a>
       </div>
     </section>
 
@@ -312,15 +298,10 @@
 
         <div class="card">
           <h2 class="section-title">Partenariat / Pub</h2>
-          <p class="muted">Doylu est indépendant des opérateurs. Partenariats possibles (clairs et transparents).</p>
+          <p class="muted">Doylu est indépendant des opérateurs.</p>
           <button class="btn btn-light" id="partnerBtn" type="button">Contacter</button>
           <div id="partnerToast" class="muted"></div>
         </div>
-      </div>
-
-      <div class="card small">
-        <h2 class="section-title">Confiance</h2>
-        <p class="muted">Doylu est indépendant des opérateurs. Les offres sont informatives et vérifiées.</p>
       </div>
     </section>
   </main>
@@ -343,7 +324,7 @@
     © <span id="year"></span> Doylu • Site indépendant des opérateurs.
   </footer>
 
-  <!-- IMPORTANT: module pour Firebase -->
+  <!-- IMPORTANT: module -->
   <script type="module" src="script.js"></script>
 </body>
 </html>
