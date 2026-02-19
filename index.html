@@ -49,7 +49,7 @@
               </div>
 
               <div class="budget-input-row">
-                <input id="budgetInput" type="number" inputmode="numeric" placeholder="Ex: 1500 (vide = tout afficher)" />
+                <input id="budgetInput" type="number" inputmode="numeric" placeholder="Ex: 1500 (facultatif)" />
                 <button id="budgetSubmit" class="btn btn-cta">Voir les offres</button>
               </div>
 
@@ -59,6 +59,7 @@
                 <button class="chip chip-budget" data-budget="2000">2000</button>
                 <button class="chip chip-budget" data-budget="3000">3000</button>
                 <button class="chip chip-budget" data-budget="5000">5000</button>
+                <button class="chip chip-budget" data-budget="0">Tout</button>
               </div>
             </div>
 
@@ -69,22 +70,18 @@
             </div>
           </div>
 
-          <!-- trust compact (option 1) -->
-          <div class="trust-row compact">
+          <div class="trust-row trust-compact">
             <div class="pill">🔒 Vérifiées</div>
             <div class="pill">⚖️ Indépendant</div>
             <div id="lastUpdate" class="pill">MAJ : —</div>
             <button id="howVerifyBtn" class="link-btn" type="button">Comment on vérifie ?</button>
           </div>
-
-          <!-- Mobile: bouton filtres -->
-          <button id="filtersToggle" class="btn btn-light filters-toggle" type="button" aria-expanded="false">
-            ⚙️ Filtres & tri
-          </button>
         </div>
 
-        <!-- PANEL filtres (desktop visible, mobile accordéon) -->
-        <div id="filtersPanel" class="filters-panel">
+        <!-- FILTRES (desktop visibles) / (mobile en accordéon) -->
+        <details id="filtersDetails" class="filters-details">
+          <summary class="filters-summary">⚙️ Filtres & tri</summary>
+
           <div class="filters-grid">
             <div class="filter-card">
               <div class="filter-title">🎯 Ton usage</div>
@@ -121,17 +118,20 @@
               <a id="waOpenBtn" class="btn btn-wa" href="#" rel="noopener noreferrer">Ouvrir WhatsApp</a>
             </div>
           </div>
-        </div>
+        </details>
       </div>
 
       <!-- BANNER TOP (compact) -->
       <div id="bestBanner" class="best-banner hidden">
         <div class="best-title" id="bestTitle">🔥 Meilleur choix</div>
-        <div id="bestLine1" class="best-line"></div>
-        <div class="best-gain-row">
-          <div id="bestUnit" class="best-unit hidden"></div>
+
+        <div id="bestLine1" class="best-line1"></div>
+        <div class="best-row">
+          <div id="bestUnitPrice" class="best-unit hidden"></div>
           <div id="bestGain" class="best-gain hidden"></div>
         </div>
+
+        <div id="bestMeta" class="best-meta"></div>
       </div>
 
       <!-- EMPTY STATE -->
