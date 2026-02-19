@@ -49,7 +49,7 @@
               </div>
 
               <div class="budget-input-row">
-                <input id="budgetInput" type="number" inputmode="numeric" placeholder="Ex: 1500 (laisse vide pour tout voir)" />
+                <input id="budgetInput" type="number" inputmode="numeric" placeholder="Ex: 1500 (ou laisse vide)" />
                 <button id="budgetSubmit" class="btn btn-cta">Voir les offres</button>
               </div>
 
@@ -70,61 +70,69 @@
             </div>
           </div>
 
-          <div class="trust-row">
-            <div class="pill">🔒 Vérifiées SMS/USSD</div>
-            <div class="pill">⚖️ Site indépendant</div>
-            <div id="lastUpdate" class="pill">Dernière MAJ : —</div>
+          <!-- ✅ Option 1 : meta compacte -->
+          <div class="trust-row trust-compact">
+            <div class="trust-left">
+              <div class="pill pill-mini">🔒 Vérifiées</div>
+              <div class="pill pill-mini">⚖️ Indépendant</div>
+              <div id="lastUpdate" class="pill pill-mini">MAJ : —</div>
+            </div>
             <button id="howVerifyBtn" class="link-btn" type="button">Comment on vérifie ?</button>
           </div>
-        </div>
 
-        <div class="filters-grid">
-          <div class="filter-card">
-            <div class="filter-title">🎯 Ton usage</div>
-            <div class="chip-row">
-              <button class="chip chip-filter is-active" data-filter="usage" data-value="data">📱 Data</button>
-              <button class="chip chip-filter" data-filter="usage" data-value="mixte">🔄 Mixte</button>
-              <button class="chip chip-filter" data-filter="usage" data-value="appels">📞 Appels</button>
+          <!-- ✅ Filtres collapsible mobile / normal desktop -->
+          <details id="filtersPanel" class="filters-panel">
+            <summary class="filters-summary">
+              ⚙️ Filtres & tri
+              <span class="filters-summary-sub muted">Usage • Opérateur • Validité</span>
+            </summary>
+
+            <div class="filters-grid">
+              <div class="filter-card">
+                <div class="filter-title">🎯 Ton usage</div>
+                <div class="chip-row">
+                  <button class="chip chip-filter is-active" data-filter="usage" data-value="data">📱 Data</button>
+                  <button class="chip chip-filter" data-filter="usage" data-value="mixte">🔄 Mixte</button>
+                  <button class="chip chip-filter" data-filter="usage" data-value="appels">📞 Appels</button>
+                </div>
+              </div>
+
+              <div class="filter-card">
+                <div class="filter-title">📡 Opérateur</div>
+                <div class="chip-row">
+                  <button class="chip chip-filter is-active" data-filter="operator" data-value="Tous">Tous</button>
+                  <button class="chip chip-filter" data-filter="operator" data-value="Orange">Orange</button>
+                  <button class="chip chip-filter" data-filter="operator" data-value="Free">Free</button>
+                  <button class="chip chip-filter" data-filter="operator" data-value="Expresso">Expresso</button>
+                </div>
+              </div>
+
+              <div class="filter-card">
+                <div class="filter-title">⏱ Validité</div>
+                <div class="chip-row">
+                  <button class="chip chip-filter is-active" data-filter="validity" data-value="Toutes">Toutes</button>
+                  <button class="chip chip-filter" data-filter="validity" data-value="24h">24h</button>
+                  <button class="chip chip-filter" data-filter="validity" data-value="7 jours">7 jours</button>
+                  <button class="chip chip-filter" data-filter="validity" data-value="30 jours">30 jours</button>
+                </div>
+              </div>
+
+              <div class="wa-card">
+                <div class="wa-title">🟢 Recevoir les bons plans sur WhatsApp</div>
+                <div class="wa-sub">Gratuit. 1 message/jour max.</div>
+                <a id="waOpenBtn" class="btn btn-wa" href="#" rel="noopener noreferrer">Ouvrir WhatsApp</a>
+              </div>
             </div>
-          </div>
-
-          <div class="filter-card">
-            <div class="filter-title">📡 Opérateur</div>
-            <div class="chip-row">
-              <button class="chip chip-filter is-active" data-filter="operator" data-value="Tous">Tous</button>
-              <button class="chip chip-filter" data-filter="operator" data-value="Orange">Orange</button>
-              <button class="chip chip-filter" data-filter="operator" data-value="Free">Free</button>
-              <button class="chip chip-filter" data-filter="operator" data-value="Expresso">Expresso</button>
-            </div>
-          </div>
-
-          <div class="filter-card">
-            <div class="filter-title">⏱ Validité</div>
-            <div class="chip-row">
-              <button class="chip chip-filter is-active" data-filter="validity" data-value="Toutes">Toutes</button>
-              <button class="chip chip-filter" data-filter="validity" data-value="24h">24h</button>
-              <button class="chip chip-filter" data-filter="validity" data-value="7 jours">7 jours</button>
-              <button class="chip chip-filter" data-filter="validity" data-value="30 jours">30 jours</button>
-            </div>
-          </div>
-
-          <div class="wa-card">
-            <div class="wa-title">🟢 Recevoir les bons plans sur WhatsApp</div>
-            <div class="wa-sub">Gratuit. 1 message/jour max.</div>
-            <a id="waOpenBtn" class="btn btn-wa" href="#" rel="noopener noreferrer">Ouvrir WhatsApp</a>
-          </div>
+          </details>
         </div>
       </div>
 
-      <!-- BANNER TOP -->
+      <!-- ✅ BANNER TOP (version compacte) -->
       <div id="bestBanner" class="best-banner hidden">
         <div class="best-title" id="bestTitle">🔥 Meilleur choix</div>
-        <div class="best-gain-row">
-          <div id="bestGain" class="best-gain hidden"></div>
-          <div id="bestSub" class="best-sub hidden"></div>
-        </div>
-        <div id="bestReco" class="best-reco">✅ Basé sur ton budget et ton usage</div>
-        <div id="bestMeta" class="best-meta"></div>
+        <div id="bestLine2" class="best-line"></div>
+        <div id="bestLine3" class="best-line muted"></div>
+        <div id="bestGain" class="best-gain hidden"></div>
       </div>
 
       <!-- EMPTY STATE -->
@@ -375,20 +383,15 @@
 
             <hr class="sep" />
 
-            <h2 class="section-title">Liste des offres</h2>
-            <div id="adminList" class="admin-list"></div>
+            <h2 class="section-title">Stats (V2)</h2>
+            <div id="statsBox" class="admin-item">
+              <div class="muted">Chargement…</div>
+            </div>
 
             <hr class="sep" />
 
-            <h2 class="section-title">📊 Stats (Firestore)</h2>
-            <p class="muted">
-              Affiche les compteurs agrégés de <code>offer_stats</code> (shares / copies / reveals).
-            </p>
-            <div class="admin-actions">
-              <button id="statsRefresh" class="btn btn-light" type="button">Actualiser</button>
-              <div id="statsMsg" class="muted"></div>
-            </div>
-            <div id="statsTable" class="stats-table"></div>
+            <h2 class="section-title">Liste des offres</h2>
+            <div id="adminList" class="admin-list"></div>
           </div>
         </div>
       </div>
@@ -413,11 +416,6 @@
     © <span id="year"></span> Doylu • Site indépendant des opérateurs.
   </footer>
 
-  <!-- ✅ Firebase (compat) - OK sur GitHub Pages -->
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-
-  <!-- App -->
   <script src="script.js"></script>
 </body>
 </html>
