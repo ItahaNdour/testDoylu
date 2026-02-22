@@ -49,7 +49,7 @@
               </div>
 
               <div class="budget-input-row">
-                <input id="budgetInput" type="number" inputmode="numeric" placeholder="Ex: 1500 (ou laisse vide)" />
+                <input id="budgetInput" type="number" inputmode="numeric" placeholder="Ex: 1500 (laisser vide = tout)" />
                 <button id="budgetSubmit" class="btn btn-cta">Voir les offres</button>
               </div>
 
@@ -59,7 +59,6 @@
                 <button class="chip chip-budget" data-budget="2000">2000</button>
                 <button class="chip chip-budget" data-budget="3000">3000</button>
                 <button class="chip chip-budget" data-budget="5000">5000</button>
-                <button class="chip chip-budget" data-budget="0">Tout</button>
               </div>
             </div>
 
@@ -70,68 +69,57 @@
             </div>
           </div>
 
-          <!-- ✅ Option 1 : meta compacte -->
-          <div class="trust-row trust-compact">
-            <div class="trust-left">
-              <div class="pill pill-mini">🔒 Vérifiées</div>
-              <div class="pill pill-mini">⚖️ Indépendant</div>
-              <div id="lastUpdate" class="pill pill-mini">MAJ : —</div>
-            </div>
+          <div class="trust-row">
+            <div class="pill">🔒 Vérifiées SMS/USSD</div>
+            <div class="pill">⚖️ Site indépendant</div>
+            <div id="lastUpdate" class="pill">MAJ : —</div>
             <button id="howVerifyBtn" class="link-btn" type="button">Comment on vérifie ?</button>
           </div>
+        </div>
 
-          <!-- ✅ Filtres collapsible mobile / normal desktop -->
-          <details id="filtersPanel" class="filters-panel">
-            <summary class="filters-summary">
-              ⚙️ Filtres & tri
-              <span class="filters-summary-sub muted">Usage • Opérateur • Validité</span>
-            </summary>
-
-            <div class="filters-grid">
-              <div class="filter-card">
-                <div class="filter-title">🎯 Ton usage</div>
-                <div class="chip-row">
-                  <button class="chip chip-filter is-active" data-filter="usage" data-value="data">📱 Data</button>
-                  <button class="chip chip-filter" data-filter="usage" data-value="mixte">🔄 Mixte</button>
-                  <button class="chip chip-filter" data-filter="usage" data-value="appels">📞 Appels</button>
-                </div>
-              </div>
-
-              <div class="filter-card">
-                <div class="filter-title">📡 Opérateur</div>
-                <div class="chip-row">
-                  <button class="chip chip-filter is-active" data-filter="operator" data-value="Tous">Tous</button>
-                  <button class="chip chip-filter" data-filter="operator" data-value="Orange">Orange</button>
-                  <button class="chip chip-filter" data-filter="operator" data-value="Free">Free</button>
-                  <button class="chip chip-filter" data-filter="operator" data-value="Expresso">Expresso</button>
-                </div>
-              </div>
-
-              <div class="filter-card">
-                <div class="filter-title">⏱ Validité</div>
-                <div class="chip-row">
-                  <button class="chip chip-filter is-active" data-filter="validity" data-value="Toutes">Toutes</button>
-                  <button class="chip chip-filter" data-filter="validity" data-value="24h">24h</button>
-                  <button class="chip chip-filter" data-filter="validity" data-value="7 jours">7 jours</button>
-                  <button class="chip chip-filter" data-filter="validity" data-value="30 jours">30 jours</button>
-                </div>
-              </div>
-
-              <div class="wa-card">
-                <div class="wa-title">🟢 Recevoir les bons plans sur WhatsApp</div>
-                <div class="wa-sub">Gratuit. 1 message/jour max.</div>
-                <a id="waOpenBtn" class="btn btn-wa" href="#" rel="noopener noreferrer">Ouvrir WhatsApp</a>
-              </div>
+        <div class="filters-grid">
+          <div class="filter-card">
+            <div class="filter-title">🎯 Ton usage</div>
+            <div class="chip-row">
+              <button class="chip chip-filter is-active" data-filter="usage" data-value="data">📱 Data</button>
+              <button class="chip chip-filter" data-filter="usage" data-value="mixte">🔄 Mixte</button>
+              <button class="chip chip-filter" data-filter="usage" data-value="appels">📞 Appels</button>
             </div>
-          </details>
+          </div>
+
+          <div class="filter-card">
+            <div class="filter-title">📡 Opérateur</div>
+            <div class="chip-row">
+              <button class="chip chip-filter is-active" data-filter="operator" data-value="Tous">Tous</button>
+              <button class="chip chip-filter" data-filter="operator" data-value="Orange">Orange</button>
+              <button class="chip chip-filter" data-filter="operator" data-value="Free">Free</button>
+              <button class="chip chip-filter" data-filter="operator" data-value="Expresso">Expresso</button>
+            </div>
+          </div>
+
+          <div class="filter-card">
+            <div class="filter-title">⏱ Validité</div>
+            <div class="chip-row">
+              <button class="chip chip-filter is-active" data-filter="validity" data-value="Toutes">Toutes</button>
+              <button class="chip chip-filter" data-filter="validity" data-value="24h">24h</button>
+              <button class="chip chip-filter" data-filter="validity" data-value="7 jours">7 jours</button>
+              <button class="chip chip-filter" data-filter="validity" data-value="30 jours">30 jours</button>
+            </div>
+          </div>
+
+          <div class="wa-card">
+            <div class="wa-title">🟢 Recevoir les bons plans sur WhatsApp</div>
+            <div class="wa-sub">Gratuit. 1 message/jour max.</div>
+            <a id="waOpenBtn" class="btn btn-wa" href="#" rel="noopener noreferrer">Ouvrir WhatsApp</a>
+          </div>
         </div>
       </div>
 
-      <!-- ✅ BANNER TOP (version compacte) -->
+      <!-- BANNER TOP (simplifié) -->
       <div id="bestBanner" class="best-banner hidden">
         <div class="best-title" id="bestTitle">🔥 Meilleur choix</div>
-        <div id="bestLine2" class="best-line"></div>
-        <div id="bestLine3" class="best-line muted"></div>
+        <div id="bestLine2" class="best-sub"></div>
+        <div id="bestLine3" class="best-sub"></div>
         <div id="bestGain" class="best-gain hidden"></div>
       </div>
 
@@ -289,6 +277,17 @@
       <div id="adminPanel" class="hidden">
         <div class="admin-row">
           <div class="card">
+            <h2 class="section-title">Stats (V1)</h2>
+            <div class="muted" id="adminStatsStatus">Chargement…</div>
+            <div class="admin-actions" style="margin-top:10px;">
+              <div class="pill">👁 USSD (jour) : <span id="statReveal">0</span></div>
+              <div class="pill">📋 Copies (jour) : <span id="statCopy">0</span></div>
+              <div class="pill">🟢 Partages (jour) : <span id="statShare">0</span></div>
+            </div>
+            <div class="muted" style="margin-top:10px;">Si Firebase n’est pas dispo, on affiche une version locale (fallback).</div>
+          </div>
+
+          <div class="card">
             <h2 class="section-title">Ajouter / Modifier une offre</h2>
 
             <div class="admin-grid">
@@ -369,9 +368,9 @@
               <button id="aReset" class="btn btn-light" type="button">Réinitialiser</button>
               <div id="adminToast" class="muted"></div>
             </div>
-          </div>
 
-          <div class="card">
+            <hr class="sep" />
+
             <h2 class="section-title">Import / Export JSON</h2>
             <div class="admin-actions">
               <button id="exportJson" class="btn btn-light" type="button">Exporter JSON</button>
@@ -380,13 +379,6 @@
             </div>
             <p class="muted">Export = sauvegarde complète. Import = remplace tes offres.</p>
             <div id="importMsg" class="muted"></div>
-
-            <hr class="sep" />
-
-            <h2 class="section-title">Stats (V2)</h2>
-            <div id="statsBox" class="admin-item">
-              <div class="muted">Chargement…</div>
-            </div>
 
             <hr class="sep" />
 
@@ -416,6 +408,21 @@
     © <span id="year"></span> Doylu • Site indépendant des opérateurs.
   </footer>
 
-  <script src="script.js?v=2"></script>
+  <!-- Firebase (OPTIONNEL) -->
+  <script>
+    // ✅ Colle ici ta config Firebase (celle que tu m'as envoyée)
+    window.DOYLU_FIREBASE_CONFIG = {
+      apiKey: "AIzaSyByiREEaHhhY9s9HI6uho6K0wat-PgrVCI",
+      authDomain: "doylu-69ed8.firebaseapp.com",
+      projectId: "doylu-69ed8",
+      storageBucket: "doylu-69ed8.firebasestorage.app",
+      messagingSenderId: "15959760370",
+      appId: "1:15959760370:web:dd7bd5aebb1fe81016df6b"
+    };
+  </script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+
+  <script src="script.js"></script>
 </body>
 </html>
