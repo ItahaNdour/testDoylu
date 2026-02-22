@@ -12,7 +12,7 @@
       { low: 0.7, high: 1.0 },
     ],
 
-    adminPassword: "doylu2026",
+    adminPassword: "doylu2027",
     STORAGE_KEY: "doylu_offers_v1",
     WA_LINK: "https://wa.me/?text=",
   };
