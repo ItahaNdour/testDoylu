@@ -1,40 +1,38 @@
-/* script.js — DOYLU V1 (STABLE + ADMIN OK)
+/* Doylu V1 — script.js COMPLET (stable)
    - Navigation hash (#accueil/#promos/#ussd/#contact/#admin)
-   - Budget vide => affiche toutes les offres
-   - Budget saisi => exact → 0.8X..X → 0.7X..X (V1)
+   - Budget optionnel: vide => afficher toutes les offres (après filtres)
+   - Budget "proche": exact → 0.8X..X → 0.7X..X
    - Filtres: usage, opérateur, validité
-   - Top + gain dynamiques (uniquement public)
+   - Top + gain dynamiques (uniquement offres public)
    - Offres sous conditions séparées
    - Admin: login, ajout/modif, liste, import/export JSON (localStorage)
-   - Share WhatsApp inclut lien Doylu
+   - Tracking: reveal/copy/share (Firestore si dispo, sinon local)
 */
 
 (() => {
   "use strict";
 
-  /* =========================
-   * 0) CONFIG
-   * ========================= */
   const CONFIG = {
     operators: ["Orange", "Free", "Expresso"],
-    validityMap: { Toutes: null, "24h": 1, "7 jours": 7, "30 jours": 30 },
+    validityMap: { "Toutes": null, "24h": 1, "7 jours": 7, "30 jours": 30 },
+
     budgetBands: [
-      { low: 1.0, high: 1.0 }, // exact
+      { low: 1.0, high: 1.0 },
       { low: 0.8, high: 1.0 },
       { low: 0.7, high: 1.0 },
     ],
-    adminPassword: "doylu2027", // ✅ ton mot de passe actuel
+
+    adminPassword: "doylu2027",
     STORAGE_KEY: "doylu_offers_v1",
+    STATS_LOCAL_KEY: "doylu_stats_local_v1",
     WA_LINK: "https://wa.me/?text=",
-    SITE_URL: "https://itahandour.github.io", // ⚠️ mets ton vrai lien si besoin
   };
 
   /* =========================
-   * 1) HELPERS
+   * Helpers
    * ========================= */
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
-
   const safe = (v) => (v == null ? "" : String(v));
   const clampInt = (v, fallback = 0) => {
     const raw = String(v ?? "").trim();
@@ -71,33 +69,152 @@
   };
 
   const openModal = (title, bodyHtml) => {
-    const mt = $("#modalTitle");
-    const mb = $("#modalBody");
+    const t = $("#modalTitle");
+    const b = $("#modalBody");
     const m = $("#modal");
-    if (!mt || !mb || !m) return;
-    mt.textContent = title;
-    mb.innerHTML = bodyHtml;
+    if (!t || !b || !m) return;
+    t.textContent = title;
+    b.innerHTML = bodyHtml;
     m.classList.remove("hidden");
   };
-
   const closeModal = () => $("#modal")?.classList.add("hidden");
 
+  const getSiteUrl = () => {
+    // GitHub Pages: https://user.github.io/repo/
+    const origin = window.location.origin;
+    const path = window.location.pathname.replace(/\/[^/]*$/, "/"); // keep folder
+    return `${origin}${path}`;
+  };
+
   /* =========================
-   * 2) OFFERS STORAGE
+   * Firebase (optional)
+   * ========================= */
+  let firestore = null;
+
+  const initFirebase = () => {
+    try {
+      const cfg = window.DOYLU_FIREBASE_CONFIG;
+      if (!cfg || !window.firebase?.initializeApp || !window.firebase?.firestore) return null;
+      const app = window.firebase.initializeApp(cfg);
+      return window.firebase.firestore(app);
+    } catch {
+      return null;
+    }
+  };
+
+  firestore = initFirebase();
+
+  /* =========================
+   * Stats (Firestore or Local fallback)
+   * ========================= */
+  const todayKey = () => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  const loadLocalStats = () => {
+    try {
+      const raw = localStorage.getItem(CONFIG.STATS_LOCAL_KEY);
+      if (!raw) return {};
+      const obj = JSON.parse(raw);
+      return obj && typeof obj === "object" ? obj : {};
+    } catch {
+      return {};
+    }
+  };
+
+  const saveLocalStats = (obj) => {
+    localStorage.setItem(CONFIG.STATS_LOCAL_KEY, JSON.stringify(obj));
+  };
+
+  const bumpStatLocal = (eventName) => {
+    const key = todayKey();
+    const stats = loadLocalStats();
+    stats[key] = stats[key] || { reveal: 0, copy: 0, share: 0 };
+    if (eventName === "reveal") stats[key].reveal += 1;
+    if (eventName === "copy") stats[key].copy += 1;
+    if (eventName === "share") stats[key].share += 1;
+    saveLocalStats(stats);
+  };
+
+  const bumpStatFirestore = async (eventName) => {
+    if (!firestore) return;
+    const key = todayKey();
+    const ref = firestore.collection("stats_daily").doc(key);
+    await firestore.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const cur = snap.exists ? snap.data() : { reveal: 0, copy: 0, share: 0 };
+      const next = { ...cur };
+      if (eventName === "reveal") next.reveal = (next.reveal || 0) + 1;
+      if (eventName === "copy") next.copy = (next.copy || 0) + 1;
+      if (eventName === "share") next.share = (next.share || 0) + 1;
+      tx.set(ref, next, { merge: true });
+    });
+  };
+
+  const bumpStat = async (eventName) => {
+    // never block UI
+    try {
+      bumpStatLocal(eventName);
+      await bumpStatFirestore(eventName);
+    } catch {
+      // ignore
+    }
+    renderAdminStats(); // refresh if admin open
+  };
+
+  const renderAdminStats = async () => {
+    const status = $("#adminStatsStatus");
+    const r = $("#statReveal");
+    const c = $("#statCopy");
+    const s = $("#statShare");
+    if (!status || !r || !c || !s) return;
+
+    const key = todayKey();
+
+    // default local
+    const local = loadLocalStats();
+    const localRow = local[key] || { reveal: 0, copy: 0, share: 0 };
+
+    // if no firestore => show local
+    if (!firestore) {
+      status.textContent = "Mode local (Firebase non connecté).";
+      r.textContent = String(localRow.reveal || 0);
+      c.textContent = String(localRow.copy || 0);
+      s.textContent = String(localRow.share || 0);
+      return;
+    }
+
+    // firestore
+    status.textContent = "Firebase connecté ✅";
+    try {
+      const doc = await firestore.collection("stats_daily").doc(key).get();
+      const row = doc.exists ? doc.data() : { reveal: 0, copy: 0, share: 0 };
+      r.textContent = String(row.reveal || 0);
+      c.textContent = String(row.copy || 0);
+      s.textContent = String(row.share || 0);
+    } catch {
+      // fallback
+      status.textContent = "Firebase OK mais lecture bloquée (règles ?). Affichage local.";
+      r.textContent = String(localRow.reveal || 0);
+      c.textContent = String(localRow.copy || 0);
+      s.textContent = String(localRow.share || 0);
+    }
+  };
+
+  /* =========================
+   * Offers storage
    * ========================= */
   const normalizeOffer = (o) => {
     const operator = safe(o.operator).trim();
     const usage = String(o.type_usage ?? "data").toLowerCase();
     const elig = String(o.eligibility_type ?? "public").toLowerCase();
 
-    let id = safe(o.offer_id || o.id);
-    if (!id) {
-      if (globalThis.crypto?.randomUUID) id = crypto.randomUUID();
-      else id = String(Date.now()) + "_" + Math.random().toString(16).slice(2);
-    }
-
     return {
-      offer_id: id,
+      offer_id: safe(o.offer_id || o.id || (crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()))),
       operator,
       name: safe(o.name || "Offre").trim(),
       price_fcfa: Number(o.price_fcfa ?? o.price ?? 0),
@@ -106,22 +223,21 @@
       minutes: o.minutes == null || o.minutes === "" ? null : Number(o.minutes),
       validity_days: o.validity_days == null || o.validity_days === "" ? null : Number(o.validity_days),
       ussd_code: safe(o.ussd_code || "").trim(),
-      eligibility_type: ["public", "student", "corporate", "special", "restricted"].includes(elig) ? elig : "public",
+      eligibility_type: ["public", "student", "corporate", "special"].includes(elig) ? elig : "public",
       est_promo: Boolean(o.est_promo ?? o.is_promo ?? false),
       source_badge: safe(o.source_badge || "Source SMS").trim(),
       status: safe(o.status || "active").toLowerCase(),
     };
   };
 
-  const defaultOffers = () =>
-    [
-      { operator: "Orange", name: "Pass Jour 300Mo", price_fcfa: 200, type_usage: "data", data_mb: 300, validity_days: 1, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
-      { operator: "Orange", name: "Pass Jour 1,5Go", price_fcfa: 500, type_usage: "data", data_mb: 1536, validity_days: 1, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
-      { operator: "Orange", name: "Pass Jour 5Go", price_fcfa: 1000, type_usage: "data", data_mb: 5 * 1024, validity_days: 1, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
-      { operator: "Orange", name: "Pass semaine 2Go", price_fcfa: 1000, type_usage: "data", data_mb: 2 * 1024, validity_days: 7, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
-      { operator: "Orange", name: "Promo 10Go (30 jours) exclusif OM", price_fcfa: 2000, type_usage: "data", data_mb: 10 * 1024, validity_days: 30, ussd_code: "#1234#", eligibility_type: "public", est_promo: true, source_badge: "Source SMS", status: "active" },
-      { operator: "Orange", name: "Pass Éducation 1Go", price_fcfa: 100, type_usage: "data", data_mb: 1024, validity_days: 7, ussd_code: "#1234#", eligibility_type: "student", source_badge: "Source SMS", status: "active" },
-    ].map(normalizeOffer);
+  const defaultOffers = () => ([
+    { operator: "Orange", name: "Pass Jour 300Mo", price_fcfa: 200, type_usage: "data", data_mb: 300, validity_days: 1, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
+    { operator: "Orange", name: "Pass Jour 1,5Go", price_fcfa: 500, type_usage: "data", data_mb: 1536, validity_days: 1, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
+    { operator: "Orange", name: "Pass Jour 5Go", price_fcfa: 1000, type_usage: "data", data_mb: 5 * 1024, validity_days: 1, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
+    { operator: "Orange", name: "Pass semaine 2Go", price_fcfa: 1000, type_usage: "data", data_mb: 2 * 1024, validity_days: 7, ussd_code: "#1234#", eligibility_type: "public", source_badge: "Source SMS", status: "active" },
+    { operator: "Orange", name: "Promo 10Go (30 jours) exclusif OM", price_fcfa: 2000, type_usage: "data", data_mb: 10 * 1024, validity_days: 30, ussd_code: "#1234#", eligibility_type: "public", est_promo: true, source_badge: "Source SMS", status: "active" },
+    { operator: "Orange", name: "Pass Éducation 1Go", price_fcfa: 100, type_usage: "data", data_mb: 1024, validity_days: 7, ussd_code: "#1234#", eligibility_type: "student", source_badge: "Source SMS", status: "active" },
+  ].map(normalizeOffer));
 
   const loadOffers = () => {
     try {
@@ -138,17 +254,17 @@
   const saveOffers = (arr) => {
     localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(arr));
     const lastUpdate = $("#lastUpdate");
-    if (lastUpdate) lastUpdate.textContent = `Dernière MAJ : aujourd'hui ${nowHHMM()}`;
+    if (lastUpdate) lastUpdate.textContent = `MAJ : ${nowHHMM()}`;
   };
 
   let OFFERS = loadOffers();
 
   /* =========================
-   * 3) STATE
+   * State
    * ========================= */
   const state = {
     route: "accueil",
-    budgetX: 0, // ✅ 0 = pas de budget => afficher tout
+    budgetX: 0,          // 0 = pas de budget => afficher tout (après filtres)
     usage: "data",
     operator: "Tous",
     validity: "Toutes",
@@ -158,7 +274,7 @@
   };
 
   /* =========================
-   * 4) PIPELINE
+   * Pipeline
    * ========================= */
   const isActive = (o) => safe(o.status).toLowerCase() === "active";
   const isOperatorAllowed = (o) => CONFIG.operators.includes(o.operator);
@@ -208,31 +324,25 @@
     return o.data_mb / o.price_fcfa;
   };
 
-  const computePricePerUnit = (o, usage) => {
-    if (!o || !Number.isFinite(o.price_fcfa) || o.price_fcfa <= 0) return null;
-
+  const computePricePerUnitLabel = (o, usage) => {
+    if (!o || !Number.isFinite(o.price_fcfa) || o.price_fcfa <= 0) return "";
     if (usage === "appels") {
-      if (!Number.isFinite(o.minutes) || o.minutes <= 0) return null;
-      const v = o.price_fcfa / o.minutes;
-      return { label: `${Math.round(v)} FCFA / min` };
+      if (!Number.isFinite(o.minutes) || o.minutes <= 0) return "";
+      return `${Math.round(o.price_fcfa / o.minutes)} FCFA / min`;
     }
-
     if (Number.isFinite(o.data_mb) && o.data_mb > 0) {
       const go = o.data_mb / 1024;
-      const v = o.price_fcfa / go;
-      return { label: `${Math.round(v)} FCFA / Go` };
+      return `${Math.round(o.price_fcfa / go)} FCFA / Go`;
     }
-    return null;
+    return "";
   };
 
   const formatGainData = (gainMb) => {
-    if (!Number.isFinite(gainMb) || gainMb <= 0) return null;
-
+    if (!Number.isFinite(gainMb) || gainMb <= 0) return "";
     if (gainMb < 1024) {
-      const rounded = roundTo(gainMb, 50);
-      return `🔥 +${Math.max(50, rounded)} Mo de plus que les autres offres`;
+      const rounded = Math.max(50, roundTo(gainMb, 50));
+      return `🔥 +${rounded} Mo de plus que les autres offres`;
     }
-
     const gainGo = mbToGo(gainMb);
     const roundedGo = roundTo(gainGo, 0.5);
     const str = roundedGo % 1 === 0 ? roundedGo.toFixed(0) : roundedGo.toFixed(1);
@@ -240,25 +350,22 @@
   };
 
   const formatGainMinutes = (gainMin) => {
-    if (!Number.isFinite(gainMin) || gainMin <= 0) return null;
+    if (!Number.isFinite(gainMin) || gainMin <= 0) return "";
     return `🔥 +${Math.round(gainMin)} min de plus que les autres offres`;
   };
 
-  const computeGain = (top1, top2, usage) => {
-    if (!top1 || !top2) return null;
-
+  const computeGainLabel = (top1, top2, usage) => {
+    if (!top1 || !top2) return "";
     if (usage === "appels") {
-      if (!Number.isFinite(top1.minutes) || !Number.isFinite(top2.minutes)) return null;
+      if (!Number.isFinite(top1.minutes) || !Number.isFinite(top2.minutes)) return "";
       return formatGainMinutes(top1.minutes - top2.minutes);
     }
-
     if (usage === "mixte") {
       if (Number.isFinite(top1.data_mb) && Number.isFinite(top2.data_mb)) return formatGainData(top1.data_mb - top2.data_mb);
       if (Number.isFinite(top1.minutes) && Number.isFinite(top2.minutes)) return formatGainMinutes(top1.minutes - top2.minutes);
-      return null;
+      return "";
     }
-
-    if (!Number.isFinite(top1.data_mb) || !Number.isFinite(top2.data_mb)) return null;
+    if (!Number.isFinite(top1.data_mb) || !Number.isFinite(top2.data_mb)) return "";
     return formatGainData(top1.data_mb - top2.data_mb);
   };
 
@@ -270,16 +377,21 @@
       .filter(isActive)
       .filter(isOperatorAllowed);
 
-    // ✅ budget: si > 0 => banding, sinon => tout
+    // 1) Budget (si x > 0)
     if (x > 0) {
       list = filterByBudgetBand(list, x);
       if (!list.length) {
-        return { list: [], publicOffers: [], specialOffers: [], scoredPublic: [], top1: null, top2: null, gain: null };
+        return { list: [], specialOffers: [], scoredPublic: [], top1: null, top2: null, gainLabel: "" };
       }
     }
 
+    // 2) Operator
     if (state.operator !== "Tous") list = list.filter((o) => o.operator === state.operator);
+
+    // 3) Usage
     list = list.filter((o) => offerHasUsage(o, state.usage));
+
+    // 4) Validity
     list = list.filter((o) => offerMatchesValidity(o, state.validity));
 
     const publicOffers = list.filter((o) => o.eligibility_type === "public");
@@ -293,13 +405,13 @@
 
     const top1 = scoredPublic[0] || null;
     const top2 = scoredPublic[1] || null;
-    const gain = top1 && top2 ? computeGain(top1, top2, state.usage) : null;
+    const gainLabel = computeGainLabel(top1, top2, state.usage);
 
-    return { list, publicOffers, specialOffers, scoredPublic, top1, top2, gain };
+    return { list, specialOffers, scoredPublic, top1, top2, gainLabel };
   };
 
   /* =========================
-   * 5) RENDER
+   * Render
    * ========================= */
   const renderOfferCard = (o, { isTop = false } = {}) => {
     const badgeTop = isTop ? `<div class="pill pill-top">🏆 Recommandé</div>` : "";
@@ -307,19 +419,16 @@
     const badgePromo = o.est_promo ? `<div class="pill pill-warning">Promo</div>` : "";
 
     const usage = state.usage;
-    let metaLine = "";
-    if (usage === "appels") {
-      metaLine = `📞 ${Number.isFinite(o.minutes) ? `${Math.round(o.minutes)} min` : "—"} • ⏱ ${Number.isFinite(o.validity_days) ? `${o.validity_days} jour(s)` : "Inconnu"}`;
-    } else {
-      metaLine = `📱 ${Number.isFinite(o.data_mb) ? formatData(o.data_mb) : "—"} • ⏱ ${Number.isFinite(o.validity_days) ? `${o.validity_days} jour(s)` : "Inconnu"}`;
-    }
+    const metaLine =
+      usage === "appels"
+        ? `📞 ${Number.isFinite(o.minutes) ? `${Math.round(o.minutes)} min` : "—"} • ⏱ ${Number.isFinite(o.validity_days) ? `${o.validity_days} jour(s)` : "Inconnu"}`
+        : `📱 ${Number.isFinite(o.data_mb) ? formatData(o.data_mb) : "—"} • ⏱ ${Number.isFinite(o.validity_days) ? `${o.validity_days} jour(s)` : "Inconnu"}`;
 
-    const ppu = computePricePerUnit(o, usage);
-
+    const ppu = computePricePerUnitLabel(o, usage);
     const ussdHtml = `<div class="ussd hidden" data-ussd-wrap="${o.offer_id}"><code>${o.ussd_code || "—"}</code></div>`;
 
     const shareText = encodeURIComponent(
-      `Doylu — ${o.operator} • ${o.name} • ${formatFcfa(o.price_fcfa)} • ${metaLine} • Code: ${o.ussd_code || "—"} • ${CONFIG.SITE_URL}`
+      `Doylu — ${o.operator} • ${o.name} • ${formatFcfa(o.price_fcfa)} • ${metaLine} • Code: ${o.ussd_code || "—"} • ${getSiteUrl()}`
     );
     const waHref = `${CONFIG.WA_LINK}${shareText}`;
 
@@ -339,7 +448,7 @@
 
         <div class="offer-name">${safe(o.operator)} — ${safe(o.name)}</div>
         <div class="offer-price">${formatFcfa(o.price_fcfa)}</div>
-        <div class="offer-meta">${metaLine}${ppu?.label ? ` • 💰 ${ppu.label}` : ""}</div>
+        <div class="offer-meta">${metaLine}${ppu ? ` • 💰 ${ppu}` : ""}</div>
 
         <div class="offer-actions secondary">
           <button class="btn btn-primary" data-action="reveal" data-id="${o.offer_id}">👁 Afficher le code</button>
@@ -349,19 +458,18 @@
 
         <div class="offer-actions">
           <button class="btn btn-light" data-action="copy" data-id="${o.offer_id}">📋 Copier</button>
-          <a class="btn btn-secondary" href="${waHref}" target="_blank" rel="noopener noreferrer">🟢 WhatsApp</a>
+          <a class="btn btn-secondary" data-action="share" data-id="${o.offer_id}" href="${waHref}" target="_blank" rel="noopener noreferrer">🟢 WhatsApp</a>
         </div>
       </article>
     `;
   };
 
   const renderSpecialCard = (o) => {
-    const map = { student: "🎓 Étudiant", corporate: "🔒 Corporate", special: "🔒 Spécial", restricted: "🔒 Sous conditions" };
+    const map = { student: "🎓 Étudiant", corporate: "🔒 Corporate", special: "🔒 Spécial" };
     const label = map[o.eligibility_type] || "🔒 Sous conditions";
-
     const metaLine = `📱 ${Number.isFinite(o.data_mb) ? formatData(o.data_mb) : "—"} • ⏱ ${Number.isFinite(o.validity_days) ? `${o.validity_days} jour(s)` : "Inconnu"}`;
 
-    const shareText = encodeURIComponent(`Doylu — ${o.operator} • ${o.name} • ${formatFcfa(o.price_fcfa)} • ${metaLine} • ${CONFIG.SITE_URL}`);
+    const shareText = encodeURIComponent(`Doylu — ${o.operator} • ${o.name} • ${formatFcfa(o.price_fcfa)} • ${metaLine} • ${getSiteUrl()}`);
     const waHref = `${CONFIG.WA_LINK}${shareText}`;
 
     return `
@@ -384,24 +492,20 @@
         <div class="muted" style="margin-top:8px;font-weight:800;">Peut nécessiter un justificatif selon l’opérateur.</div>
 
         <div class="offer-actions" style="grid-template-columns:1fr;">
-          <a class="btn btn-secondary" href="${waHref}" target="_blank" rel="noopener noreferrer">🟢 Partager WhatsApp</a>
+          <a class="btn btn-secondary" data-action="share" data-id="${o.offer_id}" href="${waHref}" target="_blank" rel="noopener noreferrer">🟢 Partager WhatsApp</a>
         </div>
       </article>
     `;
   };
 
-  // ✅ Banner simplifié (comme demandé)
-  const renderBestBanner = ({ top1, gain }) => {
+  const renderBestBanner = ({ top1, gainLabel }) => {
     const banner = $("#bestBanner");
-    const bestTitle = $("#bestTitle");
-    const bestGain = $("#bestGain");
+    const title = $("#bestTitle");
+    const l2 = $("#bestLine2");
+    const l3 = $("#bestLine3");
+    const gain = $("#bestGain");
 
-    // Ces IDs existent dans ton HTML “bon”
-    const bestSub = $("#bestSub");
-    const bestReco = $("#bestReco");
-    const bestMeta = $("#bestMeta");
-
-    if (!banner || !bestTitle || !bestGain || !bestSub || !bestReco || !bestMeta) return;
+    if (!banner || !title || !l2 || !l3 || !gain) return;
 
     if (!top1) {
       banner.classList.add("hidden");
@@ -409,26 +513,21 @@
     }
 
     banner.classList.remove("hidden");
+    title.textContent = state.budgetX > 0 ? `🔥 Meilleur choix pour ${formatFcfa(state.budgetX)}` : "🔥 Meilleur choix du moment";
+    l2.textContent = `${top1.operator} — ${top1.name}`;
 
-    bestTitle.textContent = state.budgetX > 0 ? `🔥 Meilleur choix pour ${formatFcfa(state.budgetX)}` : `🔥 Meilleur choix du moment`;
-    bestSub.classList.add("hidden");
-    bestReco.classList.add("hidden");
+    const usageMeta =
+      state.usage === "appels"
+        ? `📞 ${Number.isFinite(top1.minutes) ? `${Math.round(top1.minutes)} min` : "—"}`
+        : `📱 ${Number.isFinite(top1.data_mb) ? formatData(top1.data_mb) : "—"}`;
+    const validityMeta = `⏱ ${Number.isFinite(top1.validity_days) ? `${top1.validity_days} jour(s)` : "Inconnu"}`;
+    l3.textContent = `${usageMeta} • ${validityMeta}${computePricePerUnitLabel(top1, state.usage) ? ` • 💰 ${computePricePerUnitLabel(top1, state.usage)}` : ""}`;
 
-    bestMeta.textContent = `${top1.operator} — ${top1.name}`;
-
-    const ppu = computePricePerUnit(top1, state.usage);
-    const ppuLine = ppu?.label ? `💰 ${ppu.label}` : "";
-    // On “réutilise” bestSub comme ligne courte si dispo
-    if (ppuLine) {
-      bestSub.textContent = ppuLine;
-      bestSub.classList.remove("hidden");
-    }
-
-    if (gain) {
-      bestGain.textContent = gain;
-      bestGain.classList.remove("hidden");
+    if (gainLabel) {
+      gain.textContent = gainLabel;
+      gain.classList.remove("hidden");
     } else {
-      bestGain.classList.add("hidden");
+      gain.classList.add("hidden");
     }
   };
 
@@ -456,7 +555,7 @@
   };
 
   const renderResults = () => {
-    const { list, specialOffers, scoredPublic, top1, gain } = pipeline();
+    const { list, specialOffers, scoredPublic, top1, gainLabel } = pipeline();
 
     const countEl = $("#offersCount");
     if (countEl) countEl.textContent = `${list.length} offre(s)`;
@@ -465,19 +564,23 @@
     if (empty) {
       if (!list.length) {
         empty.classList.remove("hidden");
-        empty.textContent = state.budgetX > 0 ? `Aucune offre proche pour ${formatFcfa(state.budgetX)}.` : `Aucune offre trouvée avec ces filtres.`;
+        empty.textContent = state.budgetX > 0
+          ? `Aucune offre proche pour ${formatFcfa(state.budgetX)}. Essaie un autre montant.`
+          : `Aucune offre trouvée avec ces filtres.`;
       } else {
         empty.classList.add("hidden");
       }
     }
 
-    renderBestBanner({ top1, gain });
+    renderBestBanner({ top1, gainLabel });
 
     const resultsTitle = $("#resultsTitle");
     if (resultsTitle) resultsTitle.textContent = `${list.length} offres trouvées`;
 
     const grid = $("#offersGrid");
-    if (grid) grid.innerHTML = scoredPublic.map((o, idx) => renderOfferCard(o, { isTop: idx === 0 })).join("");
+    if (grid) {
+      grid.innerHTML = scoredPublic.map((o, idx) => renderOfferCard(o, { isTop: idx === 0 })).join("") || "";
+    }
 
     const wrap = $("#specialOffersWrap");
     const sgrid = $("#specialOffersGrid");
@@ -493,7 +596,7 @@
   };
 
   /* =========================
-   * 6) ROUTER
+   * Router
    * ========================= */
   const views = ["accueil", "promos", "ussd", "contact", "admin"];
 
@@ -526,7 +629,7 @@
   };
 
   /* =========================
-   * 7) UI EVENTS
+   * UI
    * ========================= */
   const setActiveChips = (filter, value) => {
     $$(`.chip-filter[data-filter="${filter}"]`).forEach((btn) => {
@@ -545,8 +648,8 @@
     const budget = raw === "" ? 0 : Math.max(0, clampInt(raw, 0));
     state.budgetX = budget;
 
-    const bi = $("#budgetInput");
-    if (bi) bi.value = budget ? String(budget) : "";
+    const input = $("#budgetInput");
+    if (input) input.value = budget ? String(budget) : "";
 
     setActiveBudgetChips(budget);
     renderResults();
@@ -554,13 +657,15 @@
   };
 
   const bindEvents = () => {
+    // menu
     $("#menuBtn")?.addEventListener("click", () => {
       const mobile = $("#mobileNav");
-      const expanded = $("#menuBtn")?.getAttribute("aria-expanded") === "true";
-      $("#menuBtn")?.setAttribute("aria-expanded", String(!expanded));
+      const expanded = $("#menuBtn").getAttribute("aria-expanded") === "true";
+      $("#menuBtn").setAttribute("aria-expanded", String(!expanded));
       mobile?.classList.toggle("hidden");
     });
 
+    // nav click close
     document.addEventListener("click", (e) => {
       const a = e.target.closest(".nav-link");
       if (!a) return;
@@ -568,13 +673,16 @@
       $("#menuBtn")?.setAttribute("aria-expanded", "false");
     });
 
+    // budget
     $("#budgetSubmit")?.addEventListener("click", () => applyBudget($("#budgetInput")?.value));
     $("#budgetInput")?.addEventListener("keydown", (e) => {
       if (e.key === "Enter") applyBudget($("#budgetInput")?.value);
     });
 
+    // quick budgets
     $$(".chip-budget").forEach((btn) => btn.addEventListener("click", () => applyBudget(btn.getAttribute("data-budget"))));
 
+    // filters (delegation)
     document.addEventListener("click", (e) => {
       const btn = e.target.closest(".chip-filter");
       if (!btn) return;
@@ -582,25 +690,13 @@
       const filter = btn.getAttribute("data-filter");
       const value = btn.getAttribute("data-value");
 
-      if (filter === "usage") {
-        state.usage = value;
-        setActiveChips("usage", value);
-        renderResults();
-      } else if (filter === "operator") {
-        state.operator = value;
-        setActiveChips("operator", value);
-        renderResults();
-      } else if (filter === "validity") {
-        state.validity = value;
-        setActiveChips("validity", value);
-        renderResults();
-      } else if (filter === "promoOperator") {
-        state.promoOperator = value;
-        setActiveChips("promoOperator", value);
-        renderPromos();
-      }
+      if (filter === "usage") { state.usage = value; setActiveChips("usage", value); renderResults(); }
+      if (filter === "operator") { state.operator = value; setActiveChips("operator", value); renderResults(); }
+      if (filter === "validity") { state.validity = value; setActiveChips("validity", value); renderResults(); }
+      if (filter === "promoOperator") { state.promoOperator = value; setActiveChips("promoOperator", value); renderPromos(); }
     });
 
+    // how verify modal
     const verifyHtml = `
       <ul>
         <li>On collecte des offres reçues par SMS/USSD et des annonces publiques.</li>
@@ -611,17 +707,18 @@
     $("#howVerifyBtn")?.addEventListener("click", () => openModal("Comment on vérifie ?", verifyHtml));
     $("#sourcesInfoBtn")?.addEventListener("click", () => openModal("Comment on vérifie ?", verifyHtml));
 
+    // modal close
     $("#modalClose")?.addEventListener("click", closeModal);
-    $("#modal")?.addEventListener("click", (e) => {
-      if (e.target.id === "modal") closeModal();
-    });
+    $("#modal")?.addEventListener("click", (e) => { if (e.target.id === "modal") closeModal(); });
 
+    // WhatsApp main
     $("#waOpenBtn")?.addEventListener("click", (e) => {
       e.preventDefault();
       const txt = encodeURIComponent("Je veux recevoir les bons plans Doylu sur WhatsApp 🙌");
       window.open(`${CONFIG.WA_LINK}${txt}`, "_blank", "noopener,noreferrer");
     });
 
+    // Offer actions
     document.addEventListener("click", async (e) => {
       const actionBtn = e.target.closest("[data-action]");
       if (!actionBtn) return;
@@ -634,10 +731,12 @@
       if (action === "reveal") {
         const wrap = document.querySelector(`[data-ussd-wrap="${id}"]`);
         if (wrap) wrap.classList.toggle("hidden");
-      } else if (action === "copy") {
+        bumpStat("reveal");
+      }
+
+      if (action === "copy") {
         const code = offer.ussd_code || "";
         if (!code) return toast("Pas de code disponible");
-
         try {
           await navigator.clipboard.writeText(code);
           toast("Code copié ✅");
@@ -650,48 +749,45 @@
           document.body.removeChild(ta);
           toast("Code copié ✅");
         }
+        bumpStat("copy");
+      }
+
+      if (action === "share") {
+        bumpStat("share");
       }
     });
 
+    // contact
     $("#contactSend")?.addEventListener("click", () => {
-      const t = $("#contactToast");
-      if (!t) return;
-      t.textContent = "✅ Merci ! Message enregistré (V1).";
-      setTimeout(() => (t.textContent = ""), 2000);
+      $("#contactToast").textContent = "✅ Merci ! Message enregistré (V1).";
+      setTimeout(() => ($("#contactToast").textContent = ""), 2000);
     });
-
     $("#smsSend")?.addEventListener("click", () => {
-      const t = $("#smsToast");
-      if (!t) return;
-      t.textContent = "✅ Merci ! SMS enregistré (V1).";
-      setTimeout(() => (t.textContent = ""), 2000);
+      $("#smsToast").textContent = "✅ Merci ! SMS enregistré (V1).";
+      setTimeout(() => ($("#smsToast").textContent = ""), 2000);
     });
-
     $("#partnerBtn")?.addEventListener("click", () => {
-      const t = $("#partnerToast");
-      if (!t) return;
-      t.textContent = "✅ OK. Ajoute un email/WA business plus tard.";
-      setTimeout(() => (t.textContent = ""), 2000);
+      $("#partnerToast").textContent = "✅ OK. Ajoute un email/WA business plus tard.";
+      setTimeout(() => ($("#partnerToast").textContent = ""), 2000);
     });
 
-    // ✅ ADMIN LOGIN
+    // admin login
     $("#adminLogin")?.addEventListener("click", () => {
       const pass = $("#adminPass")?.value || "";
-      const msg = $("#adminGateMsg");
       if (pass === CONFIG.adminPassword) {
         state.isAdmin = true;
-        if (msg) msg.textContent = "";
+        $("#adminGateMsg").textContent = "";
         renderAdmin();
       } else {
-        if (msg) msg.textContent = "Mot de passe incorrect.";
+        $("#adminGateMsg").textContent = "Mot de passe incorrect.";
       }
     });
   };
 
   /* =========================
-   * 8) ADMIN
+   * Admin
    * ========================= */
-  const resetAdminForm = () => {
+  const resetAdminForm = (clearToast = true) => {
     $("#aOperator").value = "Orange";
     $("#aName").value = "";
     $("#aPrice").value = "";
@@ -703,7 +799,7 @@
     $("#aEligibility").value = "public";
     $("#aSourceBadge").value = "Source SMS";
     $("#aPromo").checked = false;
-    $("#adminToast").textContent = "";
+    if (clearToast) $("#adminToast").textContent = "";
   };
 
   const renderAdminList = () => {
@@ -718,7 +814,7 @@
       .map((o) => {
         const meta = `${o.type_usage} • ${formatFcfa(o.price_fcfa)} • ${o.eligibility_type}`;
         return `
-          <div class="admin-item">
+          <div class="admin-item" data-admin-offer="${o.offer_id}">
             <strong>${o.operator} — ${o.name}</strong>
             <div class="muted">${meta}</div>
             <div class="row">
@@ -733,7 +829,6 @@
     list.onclick = (e) => {
       const b = e.target.closest("[data-admin-action]");
       if (!b) return;
-
       const action = b.getAttribute("data-admin-action");
       const id = b.getAttribute("data-id");
       const o = OFFERS.find((x) => x.offer_id === id);
@@ -745,7 +840,9 @@
         renderAdminList();
         renderResults();
         toast("Supprimé");
-      } else if (action === "edit") {
+      }
+
+      if (action === "edit") {
         state.editingId = id;
         $("#aOperator").value = o.operator;
         $("#aName").value = o.name;
@@ -770,19 +867,24 @@
 
     gate.classList.toggle("hidden", state.isAdmin);
     panel.classList.toggle("hidden", !state.isAdmin);
+
     if (!state.isAdmin) return;
 
-    // Bind admin buttons safely (avoid duplicate listeners)
-    const bindClick = (id, fn) => {
+    // stats
+    renderAdminStats();
+
+    // bind buttons (safe rebind)
+    const rebindClick = (id, handler) => {
       const el = $(id);
-      if (!el) return;
-      const clone = el.cloneNode(true);
-      el.parentNode.replaceChild(clone, el);
-      clone.addEventListener("click", fn);
+      if (!el) return null;
+      const newEl = el.cloneNode(true);
+      el.parentNode.replaceChild(newEl, el);
+      newEl.addEventListener("click", handler);
+      return newEl;
     };
 
-    bindClick("#aSave", () => {
-      const o = normalizeOffer({
+    rebindClick("#aSave", () => {
+      const o = {
         offer_id: state.editingId || undefined,
         operator: $("#aOperator").value,
         name: $("#aName").value,
@@ -796,30 +898,31 @@
         source_badge: $("#aSourceBadge").value,
         est_promo: $("#aPromo").checked,
         status: "active",
-      });
+      };
 
-      const idx = OFFERS.findIndex((x) => x.offer_id === o.offer_id);
-      if (idx >= 0) OFFERS[idx] = o;
-      else OFFERS.unshift(o);
+      const no = normalizeOffer(o);
+      const idx = OFFERS.findIndex((x) => x.offer_id === no.offer_id);
+
+      if (idx >= 0) OFFERS[idx] = no;
+      else OFFERS.unshift(no);
 
       saveOffers(OFFERS);
       $("#adminToast").textContent = "✅ Enregistré.";
       setTimeout(() => ($("#adminToast").textContent = ""), 1500);
-
       state.editingId = null;
       resetAdminForm();
       renderAdminList();
       renderResults();
     });
 
-    bindClick("#aReset", () => {
+    rebindClick("#aReset", () => {
       state.editingId = null;
       resetAdminForm();
       $("#adminToast").textContent = "Réinitialisé.";
       setTimeout(() => ($("#adminToast").textContent = ""), 1200);
     });
 
-    bindClick("#exportJson", () => {
+    rebindClick("#exportJson", () => {
       const blob = new Blob([JSON.stringify(OFFERS, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -839,7 +942,7 @@
         try {
           const text = await file.text();
           const arr = JSON.parse(text);
-          if (!Array.isArray(arr)) throw new Error("Invalid");
+          if (!Array.isArray(arr)) throw new Error("JSON invalide");
           OFFERS = arr.map(normalizeOffer);
           saveOffers(OFFERS);
           $("#importMsg").textContent = "✅ Import OK.";
@@ -855,28 +958,25 @@
       };
     }
 
+    resetAdminForm(false);
     renderAdminList();
   };
 
   /* =========================
-   * 9) INIT
+   * Init
    * ========================= */
   const init = () => {
-    const year = $("#year");
-    if (year) year.textContent = String(new Date().getFullYear());
+    $("#year") && ($("#year").textContent = String(new Date().getFullYear()));
+    $("#lastUpdate") && ($("#lastUpdate").textContent = `MAJ : ${nowHHMM()}`);
 
-    const lu = $("#lastUpdate");
-    if (lu) lu.textContent = `Dernière MAJ : aujourd'hui ${nowHHMM()}`;
-
-    // default chips
+    // defaults
     setActiveChips("usage", "data");
     setActiveChips("operator", "Tous");
     setActiveChips("validity", "Toutes");
     setActiveChips("promoOperator", "Tous");
 
     // budget empty => show all
-    const bi = $("#budgetInput");
-    if (bi) bi.value = "";
+    $("#budgetInput") && ($("#budgetInput").value = "");
     setActiveBudgetChips(0);
 
     bindEvents();
